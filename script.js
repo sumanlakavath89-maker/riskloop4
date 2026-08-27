@@ -6,10 +6,23 @@ window.openSupportHub = function() {
   if (modal) {
     modal.hidden = false;
     modal.removeAttribute('hidden');
-    modal.style.display = 'flex';
+    modal.classList.add('active');
+    modal.style.setProperty('display', 'flex', 'important');
     document.body.style.overflow = 'hidden';
     const input = document.getElementById('supportHubAiInput');
     setTimeout(() => { if (input) input.focus(); }, 60);
+    return;
+  }
+  const fallbackModal = document.getElementById('supportModal');
+  if (fallbackModal) {
+    fallbackModal.hidden = false;
+    fallbackModal.removeAttribute('hidden');
+    fallbackModal.style.setProperty('display', 'flex', 'important');
+    document.body.style.overflow = 'hidden';
+    return;
+  }
+  if (window.location) {
+    window.location.hash = 'contact-support';
   }
 };
 
@@ -18,7 +31,8 @@ window.closeSupportHub = function() {
   if (modal) {
     modal.hidden = true;
     modal.setAttribute('hidden', '');
-    modal.style.display = 'none';
+    modal.classList.remove('active');
+    modal.style.setProperty('display', 'none', 'important');
     document.body.style.overflow = '';
   }
 };
@@ -2783,13 +2797,11 @@ renderStockHint();
      Authentication Guard for Journal
   ---------------------------------------------------------- */
   async function checkJournalAuth() {
-    console.log('[AuthGuard] Journal session check');
     try {
       if (window.supabaseClient && typeof window.supabaseClient.auth?.getSession === 'function') {
         const { data: { session }, error } = await window.supabaseClient.auth.getSession();
         if (session?.user?.id) {
           _currentAuthUserId = session.user.id;
-          console.log('[AuthGuard] Authenticated user:', session.user.id);
           return { authenticated: true, user: session.user, token: session.access_token };
         }
       }
@@ -2797,21 +2809,76 @@ renderStockHint();
       console.warn('[AuthGuard] Session check warning:', err);
     }
 
+    try {
+      if (window.RiskLoopAuth && typeof window.RiskLoopAuth.getCurrentUser === 'function') {
+        const authUser = await window.RiskLoopAuth.getCurrentUser();
+        if (authUser && authUser.id) {
+          _currentAuthUserId = authUser.id;
+          const token = typeof window.RiskLoopAuth.getAccessToken === 'function' ? await window.RiskLoopAuth.getAccessToken() : null;
+          return { authenticated: true, user: authUser, token: token };
+        }
+      }
+    } catch (_) {}
+
+    try {
+      const cached = JSON.parse(localStorage.getItem('riskloop_current_user') || 'null');
+      if (cached && cached.id) {
+        _currentAuthUserId = cached.id;
+        return { authenticated: true, user: cached, token: null };
+      }
+    } catch (_) {}
+
     _currentAuthUserId = null;
-    console.log('[AuthGuard] No session - blocking journal');
     return { authenticated: false, user: null, token: null };
   }
   window.checkJournalAuth = checkJournalAuth;
 
+  async function initJournalCalendarGuarded() {
+    try {
+      const auth = await checkJournalAuth();
+      if (auth.authenticated && auth.user?.id) {
+        const uid = auth.user.id;
+        _currentAuthUserId = uid;
+
+        // 1. Immediately restore cached trades for instant, zero-flicker UI render on refresh
+        const storageKey = getJournalStorageKey(uid);
+        if (storageKey) {
+          try {
+            const cached = JSON.parse(localStorage.getItem(storageKey) || '{}');
+            if (cached && typeof cached === 'object' && Object.keys(cached).length > 0) {
+              DETAILED_TRADES = cached;
+              TRADE_DATA = {};
+              Object.keys(DETAILED_TRADES).forEach(k => {
+                const dayTrades = DETAILED_TRADES[k] || [];
+                const sumPnl = dayTrades.reduce((acc, tr) => acc + (tr.pnl || 0), 0);
+                TRADE_DATA[k] = { trades: dayTrades.length, pnl: sumPnl };
+              });
+              window.__rlTradeData = TRADE_DATA;
+              if (typeof renderCalendar === 'function') renderCalendar();
+              if (typeof _selectedDateKey !== 'undefined' && _selectedDateKey && typeof renderDayTrades === 'function') {
+                renderDayTrades(_selectedDateKey);
+              }
+            }
+          } catch (_) {}
+        }
+
+        // 2. Fetch authoritative database trades from backend/Supabase
+        await loadJournalTradesFromBackend(uid);
+      } else {
+        clearJournalState();
+      }
+    } catch (err) {
+      console.warn('[Journal] Guarded init notice:', err);
+    }
+  }
+  window.initJournalCalendarGuarded = initJournalCalendarGuarded;
+
   async function loadJournalTradesFromBackend(userId) {
     const activeUserId = userId || _currentAuthUserId;
     if (!activeUserId) {
-      console.log('[AuthGuard] No session - blocking journal');
       clearJournalState();
       return;
     }
-
-    console.log('[Journal] Loading authenticated user\'s trades');
 
     try {
       const authHeaders = await getJournalAuthHeaders();
@@ -3369,7 +3436,96 @@ renderStockHint();
     rrEl.value = '';
   }
 
-  /* ------ Screenshot preview + AI auto-fill ------ */
+  /* ----------------------------------------------------------
+     Multi-Screenshot Preview Strip (Global & Module-scoped)
+  ---------------------------------------------------------- */
+  function renderMultiPreviewStrip(optionalImages) {
+    const strip = dom('jtfMultiPreviewStrip') || document.getElementById('jtfMultiPreviewStrip');
+    const errEl = dom('jtfScreenshotErr') || document.getElementById('jtfScreenshotErr');
+    const removeBtn = dom('jtfRemoveImg') || document.getElementById('jtfRemoveImg');
+    const scanWrap = dom('jtfScanWrap') || document.getElementById('jtfScanWrap');
+    const idle = dom('jtfUploadIdle') || document.getElementById('jtfUploadIdle');
+    const preview = dom('jtfPreviewImg') || document.getElementById('jtfPreviewImg');
+
+    if (errEl) errEl.hidden = true;
+
+    // If explicit images argument was provided, safely populate _pendingTradeFiles
+    if (optionalImages && Array.isArray(optionalImages)) {
+      _pendingTradeFiles = optionalImages.map((img, idx) => {
+        if (!img) return null;
+        if (typeof img === 'string') {
+          return {
+            file: null,
+            url: img,
+            previewUrl: img,
+            name: `Screenshot ${idx + 1}`,
+            public_id: null,
+            existing: true
+          };
+        }
+        return {
+          file: img.file || null,
+          url: img.secure_url || img.url || img.previewUrl || '',
+          previewUrl: img.previewUrl || img.secure_url || img.url || '',
+          name: img.name || (img.file ? img.file.name : `Screenshot ${idx + 1}`),
+          public_id: img.public_id || null,
+          existing: img.existing || Boolean(img.secure_url || img.url)
+        };
+      }).filter(Boolean);
+    }
+
+    if (!strip) return;
+
+    if (!_pendingTradeFiles || _pendingTradeFiles.length === 0) {
+      strip.style.display = 'none';
+      strip.innerHTML = '';
+      if (removeBtn) removeBtn.hidden = true;
+      if (scanWrap) scanWrap.hidden = true;
+      if (idle) idle.hidden = false;
+      if (preview) preview.src = '';
+      const banner = dom('jtfAiBanner') || document.getElementById('jtfAiBanner');
+      if (banner) banner.hidden = true;
+      return;
+    }
+
+    strip.style.display = 'flex';
+    if (removeBtn) removeBtn.hidden = false;
+    if (idle) idle.hidden = true;
+
+    const maxLimit = (typeof MAX_TRADE_IMAGES !== 'undefined' && MAX_TRADE_IMAGES) ? MAX_TRADE_IMAGES : 3;
+
+    strip.innerHTML = _pendingTradeFiles.map((item, idx) => {
+      const previewSrc = item.previewUrl || item.url || '';
+      const displayName = item.file ? item.file.name : (item.name || `Screenshot ${idx + 1}`);
+      return `
+        <div class="jtf-pending-img-item" style="position:relative;width:90px;border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,0.15);background:#0d1120;padding:4px;box-sizing:border-box;">
+          <img src="${escapeHtml(previewSrc)}" alt="Preview ${idx + 1}" style="width:100%;height:60px;object-fit:cover;border-radius:6px;display:block;" />
+          <div style="font-size:9.5px;color:var(--text-muted);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${escapeHtml(displayName)}">${escapeHtml(displayName)}</div>
+          <span style="position:absolute;top:6px;left:6px;font-size:9px;font-weight:700;background:rgba(0,0,0,0.75);color:#fff;padding:1px 5px;border-radius:4px;">${idx + 1}/${maxLimit}</span>
+          <button type="button" class="jtf-remove-single-img-btn" data-idx="${idx}" title="Remove this screenshot" style="position:absolute;top:6px;right:6px;width:18px;height:18px;border-radius:50%;background:rgba(239,68,68,0.9);color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;line-height:1;padding:0;">&times;</button>
+        </div>
+      `;
+    }).join('');
+
+    strip.querySelectorAll('.jtf-remove-single-img-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        const removeIdx = parseInt(btn.getAttribute('data-idx'), 10);
+        if (!isNaN(removeIdx) && _pendingTradeFiles && _pendingTradeFiles.length > removeIdx) {
+          _pendingTradeFiles.splice(removeIdx, 1);
+          renderMultiPreviewStrip();
+          if (_pendingTradeFiles.length > 0 && preview) {
+            preview.src = _pendingTradeFiles[0].previewUrl || _pendingTradeFiles[0].url || '';
+          } else if (preview) {
+            preview.src = '';
+          }
+        }
+      });
+    });
+  }
+  window.renderMultiPreviewStrip = renderMultiPreviewStrip;
+
   /* ------ Screenshot preview + Smart AI Auto-Fill Engine ------ */
   function initScreenshotPreview() {
     const input        = dom('jtfScreenshot');
@@ -4318,59 +4474,6 @@ renderStockHint();
       }
     }
 
-    function renderMultiPreviewStrip() {
-      const strip = dom('jtfMultiPreviewStrip');
-      const errEl = dom('jtfScreenshotErr');
-      if (errEl) errEl.hidden = true;
-      if (!strip) return;
-
-      if (_pendingTradeFiles.length === 0) {
-        strip.style.display = 'none';
-        strip.innerHTML = '';
-        if (removeBtn) removeBtn.hidden = true;
-        if (scanWrap) scanWrap.hidden = true;
-        if (idle) idle.hidden = false;
-        showBannerState('hidden');
-        return;
-      }
-
-      strip.style.display = 'flex';
-      if (removeBtn) removeBtn.hidden = false;
-      if (idle) idle.hidden = true;
-
-      const maxLimit = (typeof MAX_TRADE_IMAGES !== 'undefined' && MAX_TRADE_IMAGES) ? MAX_TRADE_IMAGES : 3;
-
-      strip.innerHTML = _pendingTradeFiles.map((item, idx) => {
-        const previewSrc = item.previewUrl || item.url || '';
-        const displayName = item.file ? item.file.name : (item.name || `Screenshot ${idx + 1}`);
-        return `
-          <div class="jtf-pending-img-item" style="position:relative;width:90px;border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,0.15);background:#0d1120;padding:4px;box-sizing:border-box;">
-            <img src="${escapeHtml(previewSrc)}" alt="Preview ${idx + 1}" style="width:100%;height:60px;object-fit:cover;border-radius:6px;display:block;" />
-            <div style="font-size:9.5px;color:var(--text-muted);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${escapeHtml(displayName)}">${escapeHtml(displayName)}</div>
-            <span style="position:absolute;top:6px;left:6px;font-size:9px;font-weight:700;background:rgba(0,0,0,0.75);color:#fff;padding:1px 5px;border-radius:4px;">${idx + 1}/${maxLimit}</span>
-            <button type="button" class="jtf-remove-single-img-btn" data-idx="${idx}" title="Remove this screenshot" style="position:absolute;top:6px;right:6px;width:18px;height:18px;border-radius:50%;background:rgba(239,68,68,0.9);color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;line-height:1;padding:0;">&times;</button>
-          </div>
-        `;
-      }).join('');
-
-      strip.querySelectorAll('.jtf-remove-single-img-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          e.preventDefault();
-          const removeIdx = parseInt(btn.getAttribute('data-idx'), 10);
-          if (!isNaN(removeIdx)) {
-            _pendingTradeFiles.splice(removeIdx, 1);
-            renderMultiPreviewStrip();
-            if (_pendingTradeFiles.length > 0 && preview) {
-              preview.src = _pendingTradeFiles[0].previewUrl;
-            } else if (preview) {
-              preview.src = '';
-            }
-          }
-        });
-      });
-    }
-
     function clearPreview() {
       _pendingTradeFiles = [];
       if (preview) { preview.src = ''; }
@@ -5043,17 +5146,20 @@ renderStockHint();
       btn.classList.toggle('jtf-outcome-active', btn.dataset.outcome === _selectedOutcome);
     });
 
-    // Populate existing images
+    // Populate existing images safely
     if (trade.images && Array.isArray(trade.images) && trade.images.length > 0) {
       _pendingTradeFiles = trade.images.map((img, idx) => ({
         file: null,
         url: typeof img === 'string' ? img : (img.secure_url || img.url || ''),
         previewUrl: typeof img === 'string' ? img : (img.secure_url || img.url || ''),
-        name: `Screenshot ${idx + 1}`,
+        name: (typeof img === 'object' && img.name) ? img.name : `Screenshot ${idx + 1}`,
         public_id: typeof img === 'object' ? img.public_id : null,
         existing: true
       }));
-      renderMultiPreviewStrip();
+      renderMultiPreviewStrip(_pendingTradeFiles);
+    } else {
+      _pendingTradeFiles = [];
+      renderMultiPreviewStrip([]);
     }
 
     // Dismiss All Trades modal if open
@@ -5630,21 +5736,17 @@ renderStockHint();
       window.RiskLoopAuth.onAuthStateChange((event, session) => {
         if (event === 'SIGNED_OUT') {
           clearJournalState();
-        } else if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+        } else if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
           if (session?.user?.id) {
             _currentAuthUserId = session.user.id;
-            if (window.location.hash === '#journal' || window.location.hash === 'journal') {
-              initJournalCalendarGuarded();
-            }
+            initJournalCalendarGuarded();
           }
         }
       });
     }
 
-    // Only load if currently on #journal AND authenticated
-    if (window.location.hash === '#journal' || window.location.hash === 'journal') {
-      initJournalCalendarGuarded();
-    }
+    // Always run guarded initialization on load
+    initJournalCalendarGuarded();
   }
 
   // Run after existing initRouting() has fired
@@ -11967,15 +12069,14 @@ document.addEventListener('DOMContentLoaded', function() {
           return;
         }
 
-        // 1. Get current authenticated Supabase session access token
         let accessToken = null;
         if (window.RiskLoopAuth && typeof window.RiskLoopAuth.getAccessToken === 'function') {
           accessToken = await window.RiskLoopAuth.getAccessToken();
         }
-        if (!accessToken && window.supabaseClient) {
+        if (!accessToken && window.supabaseClient && window.supabaseClient.auth) {
           try {
-            const { data: { session } } = await window.supabaseClient.auth.getSession();
-            accessToken = session?.access_token;
+            const { data } = await window.supabaseClient.auth.getSession();
+            accessToken = data?.session?.access_token;
           } catch (_) {}
         }
 
@@ -11987,7 +12088,6 @@ document.addEventListener('DOMContentLoaded', function() {
           return;
         }
 
-        // 2. Set Loading state & Prevent duplicate submissions
         isSubmitting = true;
         if (submitBtn) {
           submitBtn.disabled = true;
@@ -11999,7 +12099,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const attachments = attachedSupportScreenshot?.dataUrl ? [attachedSupportScreenshot.dataUrl] : [];
 
         try {
-          // 3. Send POST /api/support/tickets
           const resp = await fetch('/api/support/tickets', {
             method: 'POST',
             headers: {
@@ -12042,11 +12141,9 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
           }
 
-          // 4. Successful submission
           const createdTicket = resData.data || {};
           const ticketNumber = createdTicket.ticket_number || createdTicket.ticketRef || 'RL-CONFIRMED';
 
-          // Close ticket form and show success state
           if (ticketFormContainer) ticketFormContainer.style.display = 'none';
           if (categoryGroup) categoryGroup.style.display = 'none';
           if (preHelpCard) preHelpCard.style.display = 'none';
@@ -12087,14 +12184,6 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     }
 
-    const supportHeaderMyTicketsBtn = document.getElementById('supportHeaderMyTicketsBtn');
-    if (supportHeaderMyTicketsBtn) {
-      supportHeaderMyTicketsBtn.addEventListener('click', () => {
-        closeSupportModal();
-        if (window.openMyTicketsModal) window.openMyTicketsModal();
-      });
-    }
-
     function resetSubmitBtn() {
       isSubmitting = false;
       if (submitBtn) {
@@ -12104,39 +12193,19 @@ document.addEventListener('DOMContentLoaded', function() {
         if (submitText) submitText.textContent = 'Submit Request';
       }
     }
+
+    const supportHeaderMyTicketsBtn = document.getElementById('supportHeaderMyTicketsBtn');
+    if (supportHeaderMyTicketsBtn) {
+      supportHeaderMyTicketsBtn.addEventListener('click', () => {
+        closeSupportModal();
+        if (window.openMyTicketsModal) window.openMyTicketsModal();
+      });
+    }
   }
 
   /* ============================================================
      RISKLOOP SUPPORT HUB CONTROLLER (PHASE 2 AI SUPPORT)
      ============================================================ */
-  /* ============================================================
-     RISKLOOP SUPPORT HUB CONTROLLER (PHASE 2 AI SUPPORT)
-     ============================================================ */
-  // Expose global open/close functions immediately so inline onclick handlers and console calls work instantly
-  window.openSupportHub = function() {
-    const modal = document.getElementById('supportHubModal');
-    if (!modal) return;
-    modal.hidden = false;
-    modal.removeAttribute('hidden');
-    modal.style.display = 'flex';
-    document.body.style.overflow = 'hidden';
-    const input = document.getElementById('supportHubAiInput');
-    setTimeout(() => {
-      if (input) input.focus();
-    }, 60);
-  };
-
-  window.closeSupportHub = function() {
-    const modal = document.getElementById('supportHubModal');
-    if (!modal) return;
-    modal.hidden = true;
-    modal.setAttribute('hidden', '');
-    modal.style.display = 'none';
-    document.body.style.overflow = '';
-  };
-
-  window.openSupportModal = window.openSupportHub;
-
   function initSupportHub() {
     const hubModal = document.getElementById('supportHubModal');
     const closeBtn = document.getElementById('supportHubCloseBtn');
@@ -12149,14 +12218,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     let isAiGenerating = false;
 
-    function openSupportHub() {
-      window.openSupportHub();
-    }
-
-    function closeSupportHub() {
-      window.closeSupportHub();
-    }
-
     function fillSupportAiPrompt(promptText) {
       if (aiInput) {
         aiInput.value = promptText;
@@ -12164,7 +12225,6 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     }
 
-    // Client-side fallback knowledge engine in case backend is offline
     function getLocalKnowledgeAnswer(query) {
       const q = query.toLowerCase();
 
@@ -12286,7 +12346,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
         let result = null;
 
-        // Try backend AI endpoint
         try {
           const apiBase = (typeof window !== 'undefined' && window.API_BASE_URL) || 
                           (typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin.startsWith('http') && !window.location.origin.includes(':5500') && !window.location.origin.includes(':8080') ? window.location.origin : 'http://localhost:3000');
@@ -12373,49 +12432,49 @@ document.addEventListener('DOMContentLoaded', function() {
       return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
-    // Expose globally
-    window.openSupportHub = openSupportHub;
-    window.closeSupportHub = closeSupportHub;
+    // Expose helpers globally
     window.fillSupportAiPrompt = fillSupportAiPrompt;
     window.handleSupportAiPrompt = handleSupportAiPrompt;
-    window.openSupportModal = openSupportHub;
 
-    // Attach listeners
+    // Attach listeners safely
     if (floatingBtn) {
-      floatingBtn.onclick = (e) => {
-        e.preventDefault();
-        openSupportHub();
+      floatingBtn.onclick = function(e) {
+        if (e && typeof e.preventDefault === 'function') e.preventDefault();
+        window.openSupportHub();
       };
     }
     if (closeBtn) {
-      closeBtn.onclick = (e) => {
-        e.preventDefault();
-        closeSupportHub();
+      closeBtn.onclick = function(e) {
+        if (e && typeof e.preventDefault === 'function') e.preventDefault();
+        window.closeSupportHub();
       };
     }
     if (hubModal) {
-      hubModal.onclick = (e) => {
-        if (e.target === hubModal) closeSupportHub();
+      hubModal.onclick = function(e) {
+        if (e.target === hubModal) window.closeSupportHub();
       };
     }
     if (aiSubmitBtn) {
-      aiSubmitBtn.onclick = (e) => {
-        e.preventDefault();
+      aiSubmitBtn.onclick = function(e) {
+        if (e && typeof e.preventDefault === 'function') e.preventDefault();
         handleSupportAiPrompt();
       };
     }
     if (aiInput) {
-      aiInput.onkeydown = (e) => {
+      aiInput.onkeydown = function(e) {
         if (e.key === 'Enter') {
-          e.preventDefault();
+          if (e && typeof e.preventDefault === 'function') e.preventDefault();
           handleSupportAiPrompt();
         }
       };
     }
 
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && hubModal && !hubModal.hidden) {
-        closeSupportHub();
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        const modal = document.getElementById('supportHubModal');
+        if (modal && !modal.hidden && modal.style.display !== 'none') {
+          window.closeSupportHub();
+        }
       }
     });
   }

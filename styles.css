@@ -29931,20 +29931,29 @@ body.reduce-animations * {
 .support-hub-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(10, 15, 29, 0.82);
+  background: rgba(10, 15, 29, 0.85);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 2000;
+  z-index: 100000 !important;
   padding: 20px;
   animation: shFadeIn 0.22s ease-out;
+}
+
+.support-hub-backdrop.active,
+.support-hub-backdrop:not([hidden]) {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
 }
 
 .support-hub-backdrop[hidden],
 #supportHubModal[hidden] {
   display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
 }
 
 @keyframes shFadeIn {

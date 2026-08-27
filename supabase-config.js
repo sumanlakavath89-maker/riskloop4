@@ -86,12 +86,12 @@
   function normalizeSupabaseUser(sbUser) {
     if (!sbUser) return null;
     const email = sbUser.email || '';
-    const fullName = sbUser.user_metadata?.full_name 
-      || sbUser.user_metadata?.name 
-      || sbUser.user_metadata?.user_name 
+    const fullName = sbUser.user_metadata?.full_name
+      || sbUser.user_metadata?.name
+      || sbUser.user_metadata?.user_name
       || (email ? email.split('@')[0] : '');
 
-    const providers = sbUser.app_metadata?.providers 
+    const providers = sbUser.app_metadata?.providers
       || (sbUser.app_metadata?.provider ? [sbUser.app_metadata.provider] : ['email']);
 
     const isGoogle = sbUser.app_metadata?.provider === 'google'
@@ -104,12 +104,12 @@
       if (cached && (cached.id === sbUser.id || cached.email === email)) {
         existingAvatar = cached.avatarUrl || cached.avatar_url || null;
       }
-    } catch (_) {}
+    } catch (_) { }
 
-    const avatarUrl = sbUser.user_metadata?.avatar_url 
-      || sbUser.user_metadata?.picture 
-      || sbUser.user_metadata?.avatar 
-      || existingAvatar 
+    const avatarUrl = sbUser.user_metadata?.avatar_url
+      || sbUser.user_metadata?.picture
+      || sbUser.user_metadata?.avatar
+      || existingAvatar
       || null;
 
     return {
@@ -130,7 +130,7 @@
       const hash = window.location.hash || '';
       const search = window.location.search || '';
       const pathname = window.location.pathname || '';
-      
+
       // Never strip recovery flow parameters before password reset is completed
       if (hash.includes('type=recovery') || search.includes('type=recovery') || pathname.includes('/reset-password') || hash.includes('reset-password')) {
         return;
@@ -141,7 +141,7 @@
       } else {
         window.location.hash = 'dashboard';
       }
-    } catch (_) {}
+    } catch (_) { }
   }
 
   function setupSupabaseAuthListener(client) {
@@ -151,27 +151,27 @@
     if (supabaseAuthSubscription && typeof supabaseAuthSubscription.unsubscribe === 'function') {
       try {
         supabaseAuthSubscription.unsubscribe();
-      } catch (_) {}
+      } catch (_) { }
       supabaseAuthSubscription = null;
     }
 
     const hash = window.location.hash || '';
     const search = window.location.search || '';
     const pathname = window.location.pathname || '';
-    
-    const isRecoveryCallback = hash.includes('type=recovery') 
-      || search.includes('type=recovery') 
+
+    const isRecoveryCallback = hash.includes('type=recovery')
+      || search.includes('type=recovery')
       || pathname.includes('/reset-password')
       || hash.includes('reset-password');
 
-    const hasRecoveryError = (hash.includes('error=') || search.includes('error=')) 
+    const hasRecoveryError = (hash.includes('error=') || search.includes('error='))
       && (hash.includes('recovery') || search.includes('recovery') || pathname.includes('/reset-password') || hash.includes('otp_expired'));
 
-    const isUrlAuthCallback = hash.includes('access_token=') 
-      || hash.includes('type=signup') 
-      || hash.includes('type=email_confirmation') 
-      || isRecoveryCallback 
-      || hash.includes('type=invite') 
+    const isUrlAuthCallback = hash.includes('access_token=')
+      || hash.includes('type=signup')
+      || hash.includes('type=email_confirmation')
+      || isRecoveryCallback
+      || hash.includes('type=invite')
       || search.includes('code=');
 
     if (isRecoveryCallback) {
@@ -320,18 +320,23 @@
   }
 
   // Attempt initial creation
-  initClient(config.url, config.anonKey);
+  if (config.url && config.anonKey) {
+    initClient(config.url, config.anonKey);
+  }
 
-  // Attempt fetching from backend config
-  if (!supabaseClient && typeof fetch !== 'undefined') {
+  // Dynamically fetch and sync with live backend environment configuration
+  if (typeof fetch !== 'undefined') {
     fetch('/api/config/supabase')
       .then(res => res.json())
       .then(data => {
-        if (data.isConfigured && data.supabaseUrl && data.supabaseAnonKey) {
-          initClient(data.supabaseUrl, data.supabaseAnonKey);
+        if (data && data.isConfigured && data.supabaseUrl && data.supabaseAnonKey) {
+          if (!supabaseClient || data.supabaseUrl !== config.url || data.supabaseAnonKey !== config.anonKey) {
+            config = { url: data.supabaseUrl, anonKey: data.supabaseAnonKey };
+            initClient(config.url, config.anonKey);
+          }
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }
 
   // Initialize cached user from localStorage on script parse
@@ -425,7 +430,7 @@
         try {
           const { data: { session }, error } = await supabaseClient.auth.getSession();
           if (!error && session) return session;
-        } catch (_) {}
+        } catch (_) { }
       }
       return null;
     },
@@ -717,7 +722,7 @@
      */
     signOut: async function () {
       if (typeof window.clearJournalState === 'function') {
-        try { window.clearJournalState(); } catch (_) {}
+        try { window.clearJournalState(); } catch (_) { }
       }
 
       if (supabaseClient) {
@@ -738,8 +743,8 @@
      * Listen to authentication state changes
      */
     onAuthStateChange: function (callback) {
-      if (typeof callback !== 'function') return () => {};
-      
+      if (typeof callback !== 'function') return () => { };
+
       // Avoid duplicate listener registration
       if (!authListeners.includes(callback)) {
         authListeners.push(callback);

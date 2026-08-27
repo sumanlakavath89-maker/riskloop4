@@ -155,28 +155,6 @@ function isUserAdmin(user, req) {
 async function requireAuth(req, res, next) {
   try {
     const authHeader = req.headers['authorization'] || req.headers['Authorization'] || '';
-
-    // Development-only fallback
-    if (
-      process.env.NODE_ENV !== 'production' &&
-      !authHeader &&
-      (req.headers['x-user-id'] || req.headers['x-client-id'])
-    ) {
-      const devId = String(req.headers['x-user-id'] || req.headers['x-client-id']).trim();
-      const authUser = {
-        id: devId,
-        email: req.headers['x-user-email'] || `${devId}@riskloop.io`,
-        role: req.headers['x-user-role'] || 'user'
-      };
-      req.user = {
-        id: authUser.id,
-        email: authUser.email,
-        role: isUserAdmin(authUser, req) ? 'admin' : 'user'
-      };
-      return next();
-    }
-
-    // Production and normal authentication path
     let token = null;
     if (authHeader.startsWith('Bearer ')) {
       token = authHeader.substring(7).trim();
@@ -184,30 +162,43 @@ async function requireAuth(req, res, next) {
       token = String(req.headers['x-supabase-token']).trim();
     }
 
-    if (!token) {
-      return res.status(401).json({
-        success: false,
-        error: 'Authentication required. Please provide a valid Authorization Bearer token.'
-      });
+    if (token) {
+      const { user, error } = await supportService.verifyUserToken(token);
+      if (!error && user) {
+        req.user = {
+          id: user.id,
+          email: user.email || `${user.id}@riskloop.io`,
+          role: isUserAdmin(user, req) ? 'admin' : 'user'
+        };
+        return next();
+      }
     }
 
-    // Verify token cryptographically with Supabase
-    const { user, error } = await supportService.verifyUserToken(token);
-
-    if (error || !user) {
-      return res.status(401).json({
-        success: false,
-        error: 'Invalid or expired authentication token. Please log in again.'
-      });
+    // Development-only fallback when token is missing or in local mock mode
+    if (
+      process.env.NODE_ENV !== 'production' &&
+      (req.headers['x-user-id'] || req.headers['x-client-id'])
+    ) {
+      const devId = String(req.headers['x-user-id'] || req.headers['x-client-id']).trim();
+      if (devId && devId !== 'undefined' && devId !== 'null') {
+        const authUser = {
+          id: devId,
+          email: req.headers['x-user-email'] || `${devId}@riskloop.io`,
+          role: req.headers['x-user-role'] || 'user'
+        };
+        req.user = {
+          id: authUser.id,
+          email: authUser.email,
+          role: isUserAdmin(authUser, req) ? 'admin' : 'user'
+        };
+        return next();
+      }
     }
 
-    req.user = {
-      id: user.id,
-      email: user.email || `${user.id}@riskloop.io`,
-      role: isUserAdmin(user, req) ? 'admin' : 'user'
-    };
-
-    return next();
+    return res.status(401).json({
+      success: false,
+      error: 'Authentication required. Please log in with a valid session.'
+    });
 
   } catch (err) {
     console.error('[Journal Auth Middleware Error]', err);

@@ -205,6 +205,10 @@ app.get('/api/health/economic-calendar', async (req, res) => {
   }
 });
 
+// Favicon & DevTools endpoints (prevent 404s in console)
+app.get('/favicon.ico', (req, res) => res.status(204).end());
+app.get('/.well-known/appspecific/com.chrome.devtools.json', (req, res) => res.json({}));
+
 // Public Supabase configuration endpoint for client initialization
 app.get('/api/config/supabase', (req, res) => {
   res.json({

@@ -11,6 +11,9 @@ export class Comment {
     this.userAvatar = data.userAvatar || '';
     this.isPro = data.isPro || false;
     this.content = data.content || '';
+    this.sentiment = data.sentiment || 'bullish';
+    this.timeframe = data.timeframe || '';
+    this.market = data.market || 'indian';
     this.timestamp = data.timestamp || new Date().toISOString();
     this.likes = data.likes || 0;
     this.dislikes = data.dislikes || 0;
@@ -98,6 +101,9 @@ export class Comment {
       userAvatar: this.userAvatar,
       isPro: this.isPro,
       content: this.content,
+      sentiment: this.sentiment,
+      timeframe: this.timeframe,
+      market: this.market,
       timestamp: this.timestamp,
       likes: this.likes,
       dislikes: this.dislikes,
@@ -121,6 +127,9 @@ export class Comment {
       userAvatar: this.userAvatar,
       isPro: this.isPro,
       content: this.content,
+      sentiment: this.sentiment,
+      timeframe: this.timeframe,
+      market: this.market,
       timestamp: this.timestamp,
       likes: this.likes,
       dislikes: this.dislikes,

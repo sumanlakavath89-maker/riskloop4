@@ -73,6 +73,17 @@ export class FyersAdapter extends BaseBrokerAdapter {
   }
 
   /**
+   * Get FYERS OAuth2 Authorization URL
+   */
+  getLoginUrl(state = 'riskloop_fyers_auth') {
+    if (!this.appId) {
+      throw new Error('FYERS_APP_ID is required to generate authorization URL');
+    }
+    const redirect = encodeURIComponent(this.redirectUri);
+    return `https://api-t1.fyers.in/api/v3/generate-authcode?client_id=${this.appId}&redirect_uri=${redirect}&response_type=code&state=${encodeURIComponent(state)}`;
+  }
+
+  /**
    * Connect and authenticate with FYERS OAuth2
    * Expects credentials.authCode from OAuth2 flow
    */
@@ -673,22 +684,20 @@ export class FyersAdapter extends BaseBrokerAdapter {
   }
 
   /**
-   * Map FYERS order status to RiskLoop status
+   * Map FYERS order status to RiskLoop status (FYERS v3 API)
+   * 1 = Cancelled, 2 = Traded/Filled (COMPLETE), 4 = Transit, 5 = Rejected, 6 = Pending, 7 = Expired
    */
   _mapOrderStatus(fyersStatus) {
     const mapping = {
-      1: 'PENDING',
-      2: 'PLACED',
-      3: 'PENDING',
-      4: 'PENDING',
-      5: 'PARTIALLY_FILLED',
-      6: 'EXECUTED',
-      7: 'CANCELLED',
-      8: 'REJECTED',
-      9: 'EXPIRED',
+      1: 'CANCELLED',
+      2: 'COMPLETE',
+      4: 'TRANSIT',
+      5: 'REJECTED',
+      6: 'PENDING',
+      7: 'EXPIRED',
     };
     
-    return mapping[fyersStatus] || 'UNKNOWN';
+    return mapping[fyersStatus] || (typeof fyersStatus === 'string' ? fyersStatus.toUpperCase() : 'UNKNOWN');
   }
 
   /**
@@ -724,131 +733,47 @@ export class FyersAdapter extends BaseBrokerAdapter {
   // ============================================================
 
   /**
-   * Get broker capabilities - enable order placement
+   * Get broker capabilities - strictly read-only
    */
   getCapabilities() {
     return {
       profile: true,
       funds: true,
       positions: true,
-      orders: true,
+      orders: true,       // Order history for reconciliation only
       holdings: true,
       quotes: true,
-      tradeHistory: true,
-      placeOrder: true,
-      modifyOrder: true,
-      cancelOrder: true,
+      tradeHistory: true, // Broker-confirmed executions only
+      placeOrder: false,  // RiskLoop NEVER places orders
+      modifyOrder: false, // RiskLoop NEVER modifies orders
+      cancelOrder: false, // RiskLoop NEVER cancels orders
     };
   }
 
+  // ============================================================
+  // READ-ONLY ARCHITECTURE ENFORCEMENT
+  // RiskLoop NEVER places, modifies, or cancels orders.
+  // ============================================================
+
   /**
-   * Place order
-   * POST /api/v3/orders
+   * Place order (Disabled)
    */
   async placeOrder(orderRequest) {
-    try {
-      this._log('Placing order:', { symbol: orderRequest.symbol, side: orderRequest.side, quantity: orderRequest.quantity });
-      
-      // Validate order request
-      this._validateOrderRequest(orderRequest);
-
-      // Prepare order payload for FYERS
-      const payload = {
-        symbol: orderRequest.symbol,
-        qty: parseInt(orderRequest.quantity),
-        type: this._mapOrderType(orderRequest.orderType),
-        side: orderRequest.side === 'BUY' ? 1 : -1,
-        productType: orderRequest.product || 'INTRADAY',
-        limitPrice: orderRequest.price ? parseFloat(orderRequest.price) : 0,
-        stopPrice: orderRequest.triggerPrice ? parseFloat(orderRequest.triggerPrice) : 0,
-        validity: orderRequest.validity || 'DAY',
-        disclosedQty: orderRequest.disclosedQty || 0,
-        offlineOrder: false,
-      };
-
-      // Call FYERS place order API
-      const response = await this._authenticatedRequest(
-        'POST',
-        '/api/v3/orders',
-        payload
-      );
-
-      // Normalize response to Order model
-      const order = this._normalizeOrderResponse(response, orderRequest);
-      
-      this._log('Order placed successfully:', { orderId: order.orderId });
-      
-      return order;
-    } catch (error) {
-      this._error('Failed to place order: ' + error.message);
-      throw error;
-    }
+    throw new Error('RiskLoop is a read-only analytics and journal platform. Placing orders is strictly disabled.');
   }
 
   /**
-   * Modify order
-   * PUT /api/v3/orders
+   * Modify order (Disabled)
    */
   async modifyOrder(orderId, modifications) {
-    try {
-      this._log('Modifying order:', { orderId });
-      
-      const payload = {
-        id: orderId,
-        type: modifications.orderType ? this._mapOrderType(modifications.orderType) : undefined,
-        qty: modifications.quantity ? parseInt(modifications.quantity) : undefined,
-        limitPrice: modifications.price ? parseFloat(modifications.price) : undefined,
-        stopPrice: modifications.triggerPrice ? parseFloat(modifications.triggerPrice) : undefined,
-        disclosedQty: modifications.disclosedQty || 0,
-      };
-
-      // Remove undefined values
-      Object.keys(payload).forEach(key => payload[key] === undefined && delete payload[key]);
-
-      const response = await this._authenticatedRequest(
-        'PUT',
-        '/api/v3/orders',
-        payload
-      );
-
-      this._log('Order modified successfully:', { orderId });
-      
-      return {
-        success: true,
-        orderId: response.id || orderId,
-        message: 'Order modified successfully',
-      };
-    } catch (error) {
-      this._error('Failed to modify order: ' + error.message);
-      throw error;
-    }
+    throw new Error('RiskLoop is a read-only analytics and journal platform. Modifying orders is strictly disabled.');
   }
 
   /**
-   * Cancel order
-   * DELETE /api/v3/orders
+   * Cancel order (Disabled)
    */
   async cancelOrder(orderId) {
-    try {
-      this._log('Cancelling order:', { orderId });
-      
-      const response = await this._authenticatedRequest(
-        'DELETE',
-        '/api/v3/orders',
-        { id: orderId }
-      );
-
-      this._log('Order cancelled successfully:', { orderId });
-      
-      return {
-        success: true,
-        orderId: response.id || orderId,
-        message: 'Order cancelled successfully',
-      };
-    } catch (error) {
-      this._error('Failed to cancel order: ' + error.message);
-      throw error;
-    }
+    throw new Error('RiskLoop is a read-only analytics and journal platform. Cancelling orders is strictly disabled.');
   }
 
   /**

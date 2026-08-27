@@ -299,6 +299,32 @@ var FOREX_DB = typeof FOREX_INSTRUMENTS !== 'undefined' ? FOREX_INSTRUMENTS : []
 // Crypto CLC uses CRYPTO_DB
 var CRYPTO_DB = typeof CRYPTO_INSTRUMENTS !== 'undefined' ? CRYPTO_INSTRUMENTS : [];
 
+/**
+ * fetchMasterInstruments
+ * Helper to fetch instruments from GET /api/instruments with query filters
+ */
+async function fetchMasterInstruments(filters = {}) {
+  try {
+    const params = new URLSearchParams();
+    if (filters.search) params.append('search', filters.search);
+    if (filters.symbol) params.append('symbol', filters.symbol);
+    if (filters.name) params.append('name', filters.name);
+    if (filters.asset_type || filters.assetType) params.append('asset_type', filters.asset_type || filters.assetType);
+    if (filters.exchange) params.append('exchange', filters.exchange);
+    if (filters.currency) params.append('currency', filters.currency);
+    if (filters.limit) params.append('limit', filters.limit);
+
+    const queryString = params.toString() ? `?${params.toString()}` : '';
+    const res = await fetch(`/api/instruments${queryString}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    return json.data || [];
+  } catch (err) {
+    console.warn('[RiskLoop] fetchMasterInstruments error:', err);
+    return [];
+  }
+}
+
 if (typeof window !== 'undefined') {
   window.NSE_STOCKS = typeof NSE_STOCKS !== 'undefined' ? NSE_STOCKS : [];
   window.NSE_FO_INDICES = typeof NSE_FO_INDICES !== 'undefined' ? NSE_FO_INDICES : [];
@@ -310,6 +336,118 @@ if (typeof window !== 'undefined') {
   window.INSTRUMENT_DB = INSTRUMENT_DB;
   window.FOREX_DB = FOREX_DB;
   window.CRYPTO_DB = CRYPTO_DB;
+  window.fetchMasterInstruments = fetchMasterInstruments;
+
+  // Asynchronously synchronize instruments from the backend master CSV on page load
+  if (typeof fetch !== 'undefined') {
+    fetchMasterInstruments().then(apiData => {
+      if (apiData && apiData.length > 0) {
+        const enrichedStocks = [];
+        const enrichedIndices = [];
+        const enrichedForex = [];
+        const enrichedCrypto = [];
+
+        apiData.forEach(item => {
+          const type = (item.asset_type || '').toLowerCase();
+          
+          if (type === 'stock') {
+            const match = NSE_STOCKS.find(s => s.symbol === item.symbol);
+            enrichedStocks.push({
+              symbol: item.symbol,
+              name: item.name,
+              exchange: item.exchange || 'NSE',
+              currency: item.currency || 'INR',
+              type: 'Stock',
+              lotSize: match ? match.lotSize : 1,
+              tickSize: match ? match.tickSize : 0.05,
+              updated: match ? match.updated : '2026-08-20',
+            });
+          } else if (type === 'index') {
+            const match = NSE_FO_INDICES.find(i => i.symbol === item.symbol);
+            enrichedIndices.push({
+              symbol: item.symbol,
+              name: item.name,
+              exchange: item.exchange || (item.symbol === 'SENSEX' || item.symbol === 'BANKEX' ? 'BSE' : 'NSE'),
+              currency: item.currency || 'INR',
+              type: 'Index',
+              lotSize: match ? match.lotSize : (item.symbol === 'NIFTY' ? 65 : 30),
+              tickSize: 0.05,
+              updated: '2026-08-20',
+            });
+          } else if (type === 'forex' || type === 'metal' || type === 'commodity') {
+            const match = FOREX_INSTRUMENTS.find(f => f.symbol === item.symbol);
+            enrichedForex.push({
+              symbol: item.symbol,
+              name: item.name,
+              exchange: item.exchange || 'OTC',
+              currency: item.currency || 'USD',
+              type: match ? match.type : (type === 'metal' ? 'Metal' : (type === 'commodity' ? 'Commodity' : 'Forex')),
+              pipValue: match ? match.pipValue : (item.symbol.includes('JPY') ? 9.09 : 10),
+              lotSize: match ? match.lotSize : 100000,
+              tickSize: match ? match.tickSize : (item.symbol.includes('JPY') ? 0.001 : 0.00001),
+              stopUnit: match ? match.stopUnit : (type === 'metal' || type === 'commodity' ? 'points' : 'pips'),
+              minLot: match ? match.minLot : 0.01,
+              tvTip: match ? match.tvTip : 'Enter stop-loss distance as shown on chart.',
+              updated: '2026-08-20',
+            });
+          } else if (type === 'crypto') {
+            const match = CRYPTO_CANDIDATES.find(c => c.symbol === item.symbol);
+            enrichedCrypto.push({
+              symbol: item.symbol,
+              name: item.name,
+              exchange: item.exchange || 'CEX',
+              currency: item.currency || 'USD',
+              type: 'Crypto',
+              pipValue: match ? match.pipValue : 1,
+              lotSize: match ? match.lotSize : 1,
+              tickSize: match ? match.tickSize : 0.01,
+              stopUnit: 'price difference',
+              minLot: match ? match.minLot : 0.001,
+              approxPrice: match ? match.approxPrice : 250,
+              updated: '2026-08-20',
+            });
+          }
+        });
+
+        if (enrichedStocks.length > 0) {
+          window.NSE_STOCKS = enrichedStocks;
+          window.STOCK_INSTRUMENTS = enrichedStocks;
+        }
+
+        if (enrichedIndices.length > 0) {
+          window.NSE_FO_INDICES = enrichedIndices;
+        }
+
+        if (enrichedIndices.length > 0 || enrichedStocks.length > 0) {
+          const foList = [...enrichedIndices, ...enrichedStocks];
+          window.FO_INSTRUMENTS = foList;
+          window.INSTRUMENT_DB = foList;
+        }
+
+        if (enrichedForex.length > 0) {
+          window.FOREX_INSTRUMENTS = enrichedForex;
+          window.FOREX_DB = enrichedForex;
+        }
+
+        if (enrichedCrypto.length > 0) {
+          window.CRYPTO_INSTRUMENTS = enrichedCrypto;
+          window.CRYPTO_DB = enrichedCrypto;
+        }
+
+        window.dispatchEvent(new CustomEvent('riskloop_instruments_synced', {
+          detail: {
+            total: apiData.length,
+            stocks: enrichedStocks.length,
+            indices: enrichedIndices.length,
+            forex: enrichedForex.length,
+            crypto: enrichedCrypto.length,
+          }
+        }));
+      }
+    }).catch(err => {
+      console.warn('[RiskLoop] Background instruments sync error:', err);
+    });
+  }
 }
 
 /* ============================================================
@@ -326,6 +464,7 @@ if (typeof module !== 'undefined' && module.exports) {
     CRYPTO_INSTRUMENTS,
     filterCryptoByPrice,
     CRYPTO_MIN_PRICE,
+    fetchMasterInstruments,
     // Legacy aliases
     INSTRUMENT_DB,
     FOREX_DB,

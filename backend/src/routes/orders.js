@@ -63,75 +63,29 @@ router.get('/', requireBrokerConnection, async (req, res) => {
   }
 });
 
-// ── POST /api/orders ──────────────────────────────────────────────────────────
+// ── READ-ONLY ARCHITECTURE ENFORCEMENT ────────────────────────────────────────
+// RiskLoop is a read-only analytics and journal platform.
+// Placing, modifying, or cancelling orders on behalf of users is strictly disabled.
 
-router.post('/', requireBrokerConnection, async (req, res) => {
-  try {
-    const { brokerId, sessionId } = req;
-    const orderRequest = req.body;
-
-    // Basic required-field validation
-    const missing = ['symbol', 'side', 'quantity'].filter(f => !orderRequest[f]);
-    if (missing.length) {
-      return res.status(400).json({
-        success: false,
-        error:   `Missing required fields: ${missing.join(', ')}`,
-      });
-    }
-
-    const adapter = brokerService.getAdapter(sessionId, brokerId);
-    const order   = await adapter.placeOrder(orderRequest);
-
-    // Persist the order immediately — it is an ORDER, not a trade
-    const orderData = typeof order.toJSON === 'function' ? order.toJSON() : order;
-    persistenceService.saveOrder(brokerId, orderData);
-
-    res.json({
-      success: true,
-      data:    orderData,
-      message: 'Order placed and persisted. It will become a Trade only after broker execution.',
-    });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
+router.post('/', (req, res) => {
+  res.status(403).json({
+    success: false,
+    error: 'RiskLoop is a read-only analytics and journal platform. Placing orders is strictly disabled.',
+  });
 });
 
-// ── PUT /api/orders/:orderId ──────────────────────────────────────────────────
-
-router.put('/:orderId', requireBrokerConnection, async (req, res) => {
-  try {
-    const { brokerId, sessionId }  = req;
-    const { orderId }              = req.params;
-    const adapter                  = brokerService.getAdapter(sessionId, brokerId);
-    const result                   = await adapter.modifyOrder(orderId, req.body);
-
-    res.json({ success: true, data: result, message: 'Order modified.' });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
+router.put('/:orderId', (req, res) => {
+  res.status(403).json({
+    success: false,
+    error: 'RiskLoop is a read-only analytics and journal platform. Modifying orders is strictly disabled.',
+  });
 });
 
-// ── DELETE /api/orders/:orderId ───────────────────────────────────────────────
-
-router.delete('/:orderId', requireBrokerConnection, async (req, res) => {
-  try {
-    const { brokerId, sessionId } = req;
-    const { orderId }             = req.params;
-    const variety                 = req.query.variety || 'NORMAL';
-    const adapter                 = brokerService.getAdapter(sessionId, brokerId);
-    const result                  = await adapter.cancelOrder(orderId, variety);
-
-    // Update persisted status to CANCELLED
-    persistenceService.saveOrder(brokerId, {
-      orderId,
-      status:          'CANCELLED',
-      updateTimestamp: new Date().toISOString(),
-    });
-
-    res.json({ success: true, data: result, message: 'Order cancelled.' });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
+router.delete('/:orderId', (req, res) => {
+  res.status(403).json({
+    success: false,
+    error: 'RiskLoop is a read-only analytics and journal platform. Cancelling orders is strictly disabled.',
+  });
 });
 
 export default router;

@@ -1,8 +1,23 @@
-# 🔌 Angel One SmartAPI Setup Guide
+# 🔌 Angel One SmartAPI Integration Guide
 
-## 📋 Overview
+## 📋 Read-Only Architecture Overview
 
-This guide will help you set up and test the Angel One SmartAPI integration with RiskLoop.
+**RiskLoop is strictly a READ-ONLY broker analytics and journal platform.**
+
+RiskLoop will **NEVER**:
+- ❌ Place orders
+- ❌ Modify orders
+- ❌ Cancel orders
+- ❌ Execute trades
+- ❌ Trade on behalf of users
+
+RiskLoop connects to broker accounts solely to ingest **broker-confirmed trading data** for:
+- 📊 Trading Journal
+- 💼 Portfolio & Holdings Overview
+- 📈 Realized & Unrealized P&L
+- 🎯 Performance Analytics & Risk Metrics
+
+Only broker-confirmed executions/fills become RiskLoop trades.
 
 ## ⚠️ Important Security Notes
 
@@ -292,14 +307,14 @@ These are intentionally disabled in Phase 1 (read-only).
 - `GET /api/dev/angelone/check-config` - Check env variables
 - `POST /api/dev/angelone/test-connection` - Quick test
 
-## 🎯 Next Steps
+## 🎯 Read-Only Data Flow
 
-1. ✅ Test all endpoints with your Angel One account
-2. ✅ Verify data normalization is working correctly
-3. ✅ Check error handling for various scenarios
-4. 🔜 Integrate with frontend UI
-5. 🔜 Add order placement (Phase 2)
-6. 🔜 Implement WebSocket for real-time data
+1. ✅ Connect to Angel One via SmartAPI login + TOTP 2FA
+2. ✅ Ingest broker profile, margin limits & available cash
+3. ✅ Synchronize broker-confirmed trades (`getTradeBook`) into Trading Journal
+4. ✅ Stream live fills via WebSocket into SQLite trade persistence
+5. ✅ Reconcile open positions, realized/unrealized P&L and holdings
+6. 🔒 Strict enforcement: Zero order placement, modification, or execution endpoints
 
 ## 📞 Support
 

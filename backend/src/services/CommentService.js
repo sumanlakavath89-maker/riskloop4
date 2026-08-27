@@ -35,6 +35,9 @@ class CommentService {
         user_avatar       TEXT NOT NULL DEFAULT '',
         is_pro            INTEGER NOT NULL DEFAULT 0,
         content           TEXT NOT NULL,
+        sentiment         TEXT NOT NULL DEFAULT 'bullish',
+        timeframe         TEXT NOT NULL DEFAULT '',
+        market            TEXT NOT NULL DEFAULT 'indian',
         timestamp         TEXT NOT NULL,
         likes             INTEGER NOT NULL DEFAULT 0,
         dislikes          INTEGER NOT NULL DEFAULT 0,
@@ -51,6 +54,11 @@ class CommentService {
       );
     `);
 
+    // Safely add columns if table existed prior
+    try { db.db.exec(`ALTER TABLE market_comments ADD COLUMN sentiment TEXT DEFAULT 'bullish'`); } catch (e) {}
+    try { db.db.exec(`ALTER TABLE market_comments ADD COLUMN timeframe TEXT DEFAULT ''`); } catch (e) {}
+    try { db.db.exec(`ALTER TABLE market_comments ADD COLUMN market TEXT DEFAULT 'indian'`); } catch (e) {}
+
     db.db.exec(`
       CREATE INDEX IF NOT EXISTS idx_comments_timestamp
         ON market_comments (timestamp DESC);
@@ -64,6 +72,11 @@ class CommentService {
     db.db.exec(`
       CREATE INDEX IF NOT EXISTS idx_comments_parent
         ON market_comments (parent_id);
+    `);
+
+    db.db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_comments_market
+        ON market_comments (market);
     `);
 
     console.log('[CommentService] Database schema initialized');
@@ -91,6 +104,9 @@ class CommentService {
           userAvatar: row.user_avatar,
           isPro: row.is_pro === 1,
           content: row.content,
+          sentiment: row.sentiment || 'bullish',
+          timeframe: row.timeframe || '',
+          market: row.market || 'indian',
           timestamp: row.timestamp,
           likes: row.likes,
           dislikes: row.dislikes,
@@ -127,12 +143,15 @@ class CommentService {
     try {
       const stmt = db.db.prepare(`
         INSERT INTO market_comments (
-          id, user_id, username, user_avatar, is_pro, content,
+          id, user_id, username, user_avatar, is_pro, content, sentiment, timeframe, market,
           timestamp, likes, dislikes, parent_id, is_edited, edited_at,
           is_reported, report_count, liked_by, disliked_by
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
           content = excluded.content,
+          sentiment = excluded.sentiment,
+          timeframe = excluded.timeframe,
+          market = excluded.market,
           likes = excluded.likes,
           dislikes = excluded.dislikes,
           is_edited = excluded.is_edited,
@@ -150,6 +169,9 @@ class CommentService {
         comment.userAvatar,
         comment.isPro ? 1 : 0,
         comment.content,
+        comment.sentiment || 'bullish',
+        comment.timeframe || '',
+        comment.market || 'indian',
         comment.timestamp,
         comment.likes,
         comment.dislikes,
@@ -182,7 +204,7 @@ class CommentService {
   /**
    * Create a new comment
    */
-  createComment(userId, username, content, userAvatar = '', isPro = false, parentId = null) {
+  createComment(userId, username, content, userAvatar = '', isPro = false, parentId = null, sentiment = 'bullish', timeframe = '', market = 'indian') {
     // Sanitize content
     const sanitizedContent = Comment.sanitize(content);
 
@@ -193,6 +215,9 @@ class CommentService {
       userAvatar,
       isPro,
       content: sanitizedContent,
+      sentiment: sentiment || 'bullish',
+      timeframe: timeframe || '',
+      market: market || 'indian',
       timestamp: new Date().toISOString(),
       parentId,
     });
@@ -227,6 +252,8 @@ class CommentService {
       page = 1,
       limit = 20,
       parentId = null,
+      market = 'indian',
+      sentiment = null,
     } = options;
 
     // Filter top-level comments (no parent) or replies to specific comment
@@ -234,7 +261,9 @@ class CommentService {
       if (parentId) {
         return c.parentId === parentId;
       }
-      return !c.parentId;
+      const matchMarket = market ? (c.market === market || (!c.market && market === 'indian')) : true;
+      const matchSentiment = sentiment && sentiment !== 'all' ? c.sentiment === sentiment : true;
+      return !c.parentId && matchMarket && matchSentiment;
     });
 
     // Sort
@@ -252,7 +281,7 @@ class CommentService {
     // Load replies for each comment
     const commentsWithReplies = paginatedComments.map(comment => {
       const commentData = comment.toPublicJSON();
-      commentData.replies = comment.replies.map(replyId => {
+      commentData.replies = (comment.replies || []).map(replyId => {
         const reply = this.comments.get(replyId);
         return reply ? reply.toPublicJSON() : null;
       }).filter(r => r !== null);
@@ -321,7 +350,7 @@ class CommentService {
     }
 
     // Delete all replies first
-    for (const replyId of comment.replies) {
+    for (const replyId of (comment.replies || [])) {
       this.comments.delete(replyId);
       this._deleteFromDatabase(replyId);
     }
@@ -431,7 +460,6 @@ class CommentService {
 
     this._persistToDatabase(comment);
 
-    // TODO: Implement moderation queue or auto-hide after threshold
     console.log(`[CommentService] Comment ${commentId} reported by user ${userId}. Total reports: ${comment.reportCount}`);
 
     return {
@@ -450,8 +478,8 @@ class CommentService {
       const comment = this.comments.get(commentId);
       if (comment) {
         interactions[commentId] = {
-          liked: comment.likedBy.includes(userId),
-          disliked: comment.dislikedBy.includes(userId),
+          liked: (comment.likedBy || []).includes(userId),
+          disliked: (comment.dislikedBy || []).includes(userId),
         };
       }
     }

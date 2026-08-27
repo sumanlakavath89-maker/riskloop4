@@ -688,138 +688,47 @@ export class DhanAdapter extends BaseBrokerAdapter {
   // ============================================================
 
   /**
-   * Get broker capabilities - enable order placement
+   * Get broker capabilities - strictly read-only
    */
   getCapabilities() {
     return {
       profile: true,
       funds: true,
       positions: true,
-      orders: true,
+      orders: true,       // Order history for reconciliation only
       holdings: true,
       quotes: true,
-      tradeHistory: true,
-      placeOrder: true,
-      modifyOrder: true,
-      cancelOrder: true,
+      tradeHistory: true, // Broker-confirmed executions only
+      placeOrder: false,  // RiskLoop NEVER places orders
+      modifyOrder: false, // RiskLoop NEVER modifies orders
+      cancelOrder: false, // RiskLoop NEVER cancels orders
     };
   }
 
+  // ============================================================
+  // READ-ONLY ARCHITECTURE ENFORCEMENT
+  // RiskLoop NEVER places, modifies, or cancels orders.
+  // ============================================================
+
   /**
-   * Place order
-   * POST /v2/orders
+   * Place order (Disabled)
    */
   async placeOrder(orderRequest) {
-    try {
-      this._log('Placing order:', { symbol: orderRequest.symbol, side: orderRequest.side, quantity: orderRequest.quantity });
-      
-      // Validate order request
-      this._validateOrderRequest(orderRequest);
-
-      // Prepare order payload for Dhan
-      const payload = {
-        dhanClientId: this.clientId,
-        transactionType: orderRequest.side,
-        exchangeSegment: orderRequest.exchangeSegment || 'NSE_EQ',
-        productType: orderRequest.product || 'INTRADAY',
-        orderType: this._reverseMapOrderType(orderRequest.orderType),
-        validity: orderRequest.validity || 'DAY',
-        securityId: orderRequest.securityId || orderRequest.symbolToken || '',
-        quantity: parseInt(orderRequest.quantity),
-        disclosedQuantity: orderRequest.disclosedQty || 0,
-        price: parseFloat(orderRequest.price) || 0,
-        triggerPrice: parseFloat(orderRequest.triggerPrice) || 0,
-        afterMarketOrder: false,
-        amoTime: 'OPEN',
-        boProfitValue: 0,
-        boStopLossValue: 0,
-      };
-
-      // Call Dhan place order API
-      const response = await this._authenticatedRequest(
-        'POST',
-        '/orders',
-        payload
-      );
-
-      // Normalize response to Order model
-      const order = this._normalizeOrderResponse(response, orderRequest);
-      
-      this._log('Order placed successfully:', { orderId: order.orderId });
-      
-      return order;
-    } catch (error) {
-      this._error('Failed to place order: ' + error.message);
-      throw error;
-    }
+    throw new Error('RiskLoop is a read-only analytics and journal platform. Placing orders is strictly disabled.');
   }
 
   /**
-   * Modify order
-   * PUT /v2/orders/{orderId}
+   * Modify order (Disabled)
    */
   async modifyOrder(orderId, modifications) {
-    try {
-      this._log('Modifying order:', { orderId });
-      
-      const payload = {
-        dhanClientId: this.clientId,
-        orderId: orderId,
-        orderType: modifications.orderType ? this._reverseMapOrderType(modifications.orderType) : undefined,
-        legName: modifications.legName || 'ENTRY_LEG',
-        quantity: modifications.quantity ? parseInt(modifications.quantity) : undefined,
-        price: modifications.price ? parseFloat(modifications.price) : undefined,
-        disclosedQuantity: modifications.disclosedQty || 0,
-        triggerPrice: modifications.triggerPrice ? parseFloat(modifications.triggerPrice) : undefined,
-        validity: modifications.validity || 'DAY',
-      };
-
-      // Remove undefined values
-      Object.keys(payload).forEach(key => payload[key] === undefined && delete payload[key]);
-
-      const response = await this._authenticatedRequest(
-        'PUT',
-        `/orders/${orderId}`,
-        payload
-      );
-
-      this._log('Order modified successfully:', { orderId });
-      
-      return {
-        success: true,
-        orderId: response.orderId || orderId,
-        message: 'Order modified successfully',
-      };
-    } catch (error) {
-      this._error('Failed to modify order: ' + error.message);
-      throw error;
-    }
+    throw new Error('RiskLoop is a read-only analytics and journal platform. Modifying orders is strictly disabled.');
   }
 
   /**
-   * Cancel order
-   * DELETE /v2/orders/{orderId}
+   * Cancel order (Disabled)
    */
   async cancelOrder(orderId) {
-    try {
-      this._log('Cancelling order:', { orderId });
-      
-      const response = await this._authenticatedRequest(
-        'DELETE',
-        `/orders/${orderId}`
-      );
-
-      this._log('Order cancelled successfully:', { orderId });
-      
-      return {
-        success: true,
-        orderId: response.orderId || orderId,
-        message: 'Order cancelled successfully',
-      };
-    } catch (error) {
-      this._error('Failed to cancel order: ' + error.message);
-      throw error;
-    }
+    throw new Error('RiskLoop is a read-only analytics and journal platform. Cancelling orders is strictly disabled.');
   }
 
   /**

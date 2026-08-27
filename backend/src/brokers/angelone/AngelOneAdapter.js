@@ -54,6 +54,25 @@ export class AngelOneAdapter extends BaseBrokerAdapter {
   }
 
   /**
+   * Get broker capabilities
+   * Enforces RiskLoop read-only architecture (analytics & journal only)
+   */
+  getCapabilities() {
+    return {
+      profile: true,
+      funds: true,
+      positions: true,
+      orders: true,       // Order history for reconciliation only
+      holdings: true,
+      quotes: true,
+      tradeHistory: true, // Broker-confirmed executions only
+      placeOrder: false,  // RiskLoop NEVER places orders
+      modifyOrder: false, // RiskLoop NEVER modifies orders
+      cancelOrder: false, // RiskLoop NEVER cancels orders
+    };
+  }
+
+  /**
    * Validate environment variables
    */
   _validateConfig() {
@@ -742,125 +761,29 @@ export class AngelOneAdapter extends BaseBrokerAdapter {
   }
 
   // ============================================================
-  // ORDER PLACEMENT METHODS
+  // READ-ONLY ARCHITECTURE ENFORCEMENT
+  // RiskLoop NEVER places, modifies, or cancels orders.
   // ============================================================
 
   /**
-   * Place order
-   * POST /rest/secure/angelbroking/order/v1/placeOrder
+   * Place order (Disabled)
    */
   async placeOrder(orderRequest) {
-    try {
-      this._log('Placing order:', { symbol: orderRequest.symbol, side: orderRequest.side, quantity: orderRequest.quantity });
-      
-      // Validate order request
-      this._validateOrderRequest(orderRequest);
-
-      // Prepare order payload for Angel One
-      const payload = {
-        variety: orderRequest.variety || 'NORMAL',
-        tradingsymbol: orderRequest.symbol,
-        symboltoken: orderRequest.symbolToken || '',
-        transactiontype: orderRequest.side, // BUY or SELL
-        exchange: orderRequest.exchange || 'NSE',
-        ordertype: orderRequest.orderType || 'MARKET', // MARKET, LIMIT, STOPLOSS_LIMIT, STOPLOSS_MARKET
-        producttype: orderRequest.product || 'INTRADAY', // INTRADAY, DELIVERY, CARRYFORWARD, MARGIN, BO, CO
-        duration: orderRequest.duration || 'DAY', // DAY, IOC
-        price: orderRequest.price || '0',
-        squareoff: orderRequest.squareOff || '0',
-        stoploss: orderRequest.stopLoss || '0',
-        quantity: orderRequest.quantity.toString(),
-      };
-
-      // Call Angel One place order API
-      const data = await this._authenticatedRequest(
-        'POST',
-        '/rest/secure/angelbroking/order/v1/placeOrder',
-        payload
-      );
-
-      // Normalize response to Order model
-      const order = this._normalizeOrderResponse(data, orderRequest);
-      
-      this._log('Order placed successfully:', { orderId: order.orderId });
-      
-      return order;
-    } catch (error) {
-      this._error('Failed to place order: ' + error.message);
-      throw error;
-    }
+    throw new Error('RiskLoop is a read-only analytics and journal platform. Placing orders is strictly disabled.');
   }
 
   /**
-   * Modify order
-   * POST /rest/secure/angelbroking/order/v1/modifyOrder
+   * Modify order (Disabled)
    */
   async modifyOrder(orderId, modifications) {
-    try {
-      this._log('Modifying order:', { orderId });
-      
-      const payload = {
-        variety: modifications.variety || 'NORMAL',
-        orderid: orderId,
-        ordertype: modifications.orderType,
-        producttype: modifications.product,
-        duration: modifications.duration || 'DAY',
-        price: modifications.price || '0',
-        quantity: modifications.quantity?.toString() || '1',
-        tradingsymbol: modifications.symbol,
-        symboltoken: modifications.symbolToken || '',
-        exchange: modifications.exchange || 'NSE',
-      };
-
-      const data = await this._authenticatedRequest(
-        'POST',
-        '/rest/secure/angelbroking/order/v1/modifyOrder',
-        payload
-      );
-
-      this._log('Order modified successfully:', { orderId });
-      
-      return {
-        success: true,
-        orderId: data.orderid || orderId,
-        message: 'Order modified successfully',
-      };
-    } catch (error) {
-      this._error('Failed to modify order: ' + error.message);
-      throw error;
-    }
+    throw new Error('RiskLoop is a read-only analytics and journal platform. Modifying orders is strictly disabled.');
   }
 
   /**
-   * Cancel order
-   * POST /rest/secure/angelbroking/order/v1/cancelOrder
+   * Cancel order (Disabled)
    */
   async cancelOrder(orderId, variety = 'NORMAL') {
-    try {
-      this._log('Cancelling order:', { orderId });
-      
-      const payload = {
-        variety,
-        orderid: orderId,
-      };
-
-      const data = await this._authenticatedRequest(
-        'POST',
-        '/rest/secure/angelbroking/order/v1/cancelOrder',
-        payload
-      );
-
-      this._log('Order cancelled successfully:', { orderId });
-      
-      return {
-        success: true,
-        orderId: data.orderid || orderId,
-        message: 'Order cancelled successfully',
-      };
-    } catch (error) {
-      this._error('Failed to cancel order: ' + error.message);
-      throw error;
-    }
+    throw new Error('RiskLoop is a read-only analytics and journal platform. Cancelling orders is strictly disabled.');
   }
 
   /**

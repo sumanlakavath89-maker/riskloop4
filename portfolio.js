@@ -7,9 +7,237 @@
 (function () {
   'use strict';
 
-  // State
-  let _activeMarket = 'india'; // 'india' or 'forex'
+  // State: 'combined', 'india', or 'forex'
+  let _activeMarket = 'combined'; 
   let _activeTimeframe = '1M';  // '1W', '1M', '3M', '1Y', 'ALL'
+  let _selectedCurrency = 'USD'; // 'USD', 'INR', 'EUR', 'GBP', 'JPY', 'AED', 'CAD'
+
+  // ── Multi-Currency Configuration & Exchange Rates (Base USD) ──
+  const CURRENCIES = {
+    USD: { code: 'USD', symbol: '$', flag: '💵', label: 'USD ($)', rate: 1.0, precision: 2, prefix: '$' },
+    INR: { code: 'INR', symbol: '₹', flag: '🇮🇳', label: 'INR (₹)', rate: 83.5, precision: 2, prefix: '₹' },
+    EUR: { code: 'EUR', symbol: '€', flag: '🇪🇺', label: 'EUR (€)', rate: 0.92, precision: 2, prefix: '€' },
+    GBP: { code: 'GBP', symbol: '£', flag: '🇬🇧', label: 'GBP (£)', rate: 0.78, precision: 2, prefix: '£' },
+    JPY: { code: 'JPY', symbol: '¥', flag: '🇯🇵', label: 'JPY (¥)', rate: 155.0, precision: 0, prefix: '¥' },
+    AED: { code: 'AED', symbol: 'د.إ', flag: '🇦🇪', label: 'AED (د.إ)', rate: 3.67, precision: 2, prefix: 'AED ' },
+    CAD: { code: 'CAD', symbol: 'C$', flag: '🇨🇦', label: 'CAD (C$)', rate: 1.37, precision: 2, prefix: 'C$' }
+  };
+
+  /**
+   * Currency formatter helper
+   * @param {number} amountUSD - Base amount in USD
+   * @param {Object} opts - { signed: boolean, precision: number, absolute: boolean }
+   */
+  function formatMoney(amountUSD, opts = {}) {
+    const curr = CURRENCIES[_selectedCurrency] || CURRENCIES.USD;
+    const rate = curr.rate || 1.0;
+    const precision = opts.precision !== undefined ? opts.precision : (curr.precision !== undefined ? curr.precision : 2);
+    const converted = (amountUSD || 0) * rate;
+    const isNegative = converted < 0;
+    const absVal = Math.abs(converted);
+
+    let formattedNum = '';
+    if (curr.code === 'INR') {
+      formattedNum = absVal.toLocaleString('en-IN', {
+        minimumFractionDigits: precision,
+        maximumFractionDigits: precision
+      });
+    } else {
+      formattedNum = absVal.toLocaleString('en-US', {
+        minimumFractionDigits: precision,
+        maximumFractionDigits: precision
+      });
+    }
+
+    if (opts.absolute) {
+      return `${curr.prefix}${formattedNum}`;
+    }
+
+    if (opts.signed) {
+      if (converted > 0) return `+${curr.prefix}${formattedNum}`;
+      if (converted < 0) return `-${curr.prefix}${formattedNum}`;
+      return `${curr.prefix}${formattedNum}`;
+    }
+
+    if (isNegative) {
+      return `-${curr.prefix}${formattedNum}`;
+    }
+    return `${curr.prefix}${formattedNum}`;
+  }
+
+  // ── Combined Portfolio Dataset (Base USD for all currencies) ──
+  const COMBINED_DATA = {
+    topStats: {
+      accountSizeUSD: 5000.00,
+      todayProfitUSD: 0.00,
+      score: '2.84',
+      balanceUSD: 4631.66,
+      balanceMaxUSD: 5065.58,
+      equityUSD: 4631.66,
+      equityMaxUSD: 5124.10
+    },
+    metrics: {
+      winRate: 64.2,
+      wins: 53,
+      losses: 29,
+      totalTrades: 82,
+      netPnlUSD: 1116.17, // ~₹93,200
+      avgWinUSD: 51.7365, // ~₹4,320
+      avgLossUSD: -22.1557, // ~-₹1,850
+      profitFactor: 2.68,
+      avgRR: '1 : 2.33',
+      bigWinUSD: 221.56,
+      bigWinSymbol: 'NIFTY 24800 CE',
+      bigLossUSD: -62.28,
+      bigLossSymbol: 'BANKNIFTY 51200 PE'
+    },
+    pnlCurve: [
+      { date: '1 Jul', pnl: 0, balanceUSD: 5000 },
+      { date: '5 Jul', pnl: 50.30, balanceUSD: 5050.30 },
+      { date: '9 Jul', pnl: 28.74, balanceUSD: 5079.04 },
+      { date: '14 Jul', pnl: 93.41, balanceUSD: 5172.45 },
+      { date: '18 Jul', pnl: 142.51, balanceUSD: 5314.96 },
+      { date: '23 Jul', pnl: 74.25, balanceUSD: 5389.21 },
+      { date: '28 Jul', pnl: -43.11, balanceUSD: 5346.10 },
+      { date: '31 Jul', pnl: 57.48, balanceUSD: 5403.58 },
+      { date: '4 Aug', pnl: -25.15, balanceUSD: 5378.43 },
+      { date: '8 Aug', pnl: 161.68, balanceUSD: 5540.11 },
+      { date: '12 Aug', pnl: 53.89, balanceUSD: 5594.00 },
+      { date: '16 Aug', pnl: 104.19, balanceUSD: 5698.19 },
+      { date: '20 Aug', pnl: 116.17, balanceUSD: 5814.36 },
+      { date: '24 Aug', pnl: 301.80, balanceUSD: 6116.16 }
+    ],
+    scatterTrades: [
+      { id: 1, date: '01 Jul', symbol: 'NIFTY CE', type: 'Options', pnlUSD: 50.30, outcome: 'win' },
+      { id: 2, date: '02 Jul', symbol: 'EUR/USD', type: 'Forex', pnlUSD: 65.00, outcome: 'win' },
+      { id: 3, date: '04 Jul', symbol: 'RELIANCE', type: 'Stock', pnlUSD: 80.84, outcome: 'win' },
+      { id: 4, date: '07 Jul', symbol: 'USD/JPY', type: 'Forex', pnlUSD: -45.00, outcome: 'loss' },
+      { id: 5, date: '09 Jul', symbol: 'NIFTY PE', type: 'Options', pnlUSD: -28.74, outcome: 'loss' },
+      { id: 6, date: '11 Jul', symbol: 'INFY', type: 'Stock', pnlUSD: 65.87, outcome: 'win' },
+      { id: 7, date: '14 Jul', symbol: 'GBP/USD', type: 'Forex', pnlUSD: 145.00, outcome: 'win' },
+      { id: 8, date: '16 Jul', symbol: 'NIFTY CE', type: 'Options', pnlUSD: 93.41, outcome: 'win' },
+      { id: 9, date: '18 Jul', symbol: 'BANKNIFTY', type: 'Options', pnlUSD: -17.96, outcome: 'loss' },
+      { id: 10, date: '21 Jul', symbol: 'NIFTY 24800 CE', type: 'Options', pnlUSD: 221.56, outcome: 'win' },
+      { id: 11, date: '23 Jul', symbol: 'TCS', type: 'Stock', pnlUSD: 49.10, outcome: 'win' },
+      { id: 12, date: '25 Jul', symbol: 'USD/CHF', type: 'Forex', pnlUSD: -62.00, outcome: 'loss' },
+      { id: 13, date: '28 Jul', symbol: 'NIFTY FUT', type: 'Futures', pnlUSD: 74.25, outcome: 'win' },
+      { id: 14, date: '30 Jul', symbol: 'SBIN', type: 'Stock', pnlUSD: -13.17, outcome: 'loss' },
+      { id: 15, date: '01 Aug', symbol: 'EUR/USD', type: 'Forex', pnlUSD: 112.00, outcome: 'win' },
+      { id: 16, date: '04 Aug', symbol: 'NIFTY 24800 CE', type: 'Options', pnlUSD: -31.44, outcome: 'loss' },
+      { id: 17, date: '04 Aug', symbol: 'BANKNIFTY PE', type: 'Options', pnlUSD: 25.15, outcome: 'win' },
+      { id: 18, date: '04 Aug', symbol: 'RELIANCE', type: 'Stock', pnlUSD: -18.86, outcome: 'loss' },
+      { id: 19, date: '06 Aug', symbol: 'GBP/USD', type: 'Forex', pnlUSD: 210.00, outcome: 'win' },
+      { id: 20, date: '08 Aug', symbol: 'NIFTY 24850 CE', type: 'Options', pnlUSD: 51.50, outcome: 'win' },
+      { id: 21, date: '08 Aug', symbol: 'HDFCBANK', type: 'Stock', pnlUSD: 33.53, outcome: 'win' },
+      { id: 22, date: '11 Aug', symbol: 'BANKNIFTY', type: 'Options', pnlUSD: 53.89, outcome: 'win' },
+      { id: 23, date: '14 Aug', symbol: 'NIFTY 24950 CE', type: 'Options', pnlUSD: 104.19, outcome: 'win' },
+      { id: 24, date: '18 Aug', symbol: 'RELIANCE FUT', type: 'Futures', pnlUSD: 43.11, outcome: 'win' },
+      { id: 25, date: '20 Aug', symbol: 'BANKNIFTY CE', type: 'Options', pnlUSD: 73.05, outcome: 'win' }
+    ],
+    longShort: {
+      long: {
+        pnlUSD: 819.16, // ~₹68,400
+        winsLabel: 'Wins (33)',
+        winsValUSD: 1450.00,
+        winRate: 68.8,
+        lossesLabel: 'Losses (15)',
+        lossesValUSD: -751.50,
+        trades: 48,
+        wins: 33,
+        losses: 15,
+        avgRR: '1 : 2.40',
+        profitFactor: 2.9
+      },
+      short: {
+        pnlUSD: 297.00, // ~₹24,800
+        winsLabel: 'Wins (20)',
+        winsValUSD: 698.50,
+        winRate: 57.6,
+        lossesLabel: 'Losses (28)',
+        lossesValUSD: 1053.06,
+        trades: 48,
+        wins: 20,
+        losses: 28,
+        avgRR: '1 : 2.10',
+        profitFactor: 2.2
+      }
+    },
+    dailyPerformance: [
+      { day: 'Mon', fullDay: 'Monday', trades: 15, winRate: 60.0, pnlUSD: 170.06 }, // ~₹14,200
+      { day: 'Tue', fullDay: 'Tuesday', trades: 18, winRate: 72.2, pnlUSD: 341.32 }, // ~₹28,500
+      { day: 'Wed', fullDay: 'Wednesday', trades: 20, winRate: 65.0, pnlUSD: 226.35 }, // ~₹18,900
+      { day: 'Thu', fullDay: 'Thursday', trades: 17, winRate: 58.8, pnlUSD: 256.29 }, // ~₹21,400
+      { day: 'Fri', fullDay: 'Friday', trades: 11, winRate: 52.0, pnlUSD: 122.16 }   // ~₹10,200
+    ],
+    behaviour: {
+      disciplineScore: 92,
+      riskCompliance: 98,
+      avgHoldTime: '38 mins',
+      maxConsecutiveWins: 6,
+      maxConsecutiveLosses: 2,
+      revengeTradingFlags: 0,
+      fomoAlerts: 1
+    },
+    instrumentPerformance: {
+      stocks: {
+        name: 'Stock (Equity)',
+        winRate: 68.0,
+        wins: 21,
+        losses: 10,
+        trades: 31,
+        tradesText: '31 trades (21W · 10L)',
+        pnlUSD: 510.18 // ~₹42,600
+      },
+      fo: {
+        name: 'F&O (Futures & Options)',
+        winRate: 49.0,
+        wins: 25,
+        losses: 26,
+        trades: 51,
+        tradesText: '51 trades (25W · 26L)',
+        pnlUSD: 605.99 // ~₹50,600
+      }
+    },
+    marketPerformance: {
+      indian: {
+        name: 'Indian Market',
+        flag: '🇮🇳',
+        winRate: 68.0,
+        trades: 48,
+        wins: 33,
+        losses: 15,
+        tradesText: '48 trades (33W · 15L)',
+        pnlUSD: 582.40 // ~₹48,630.40
+      },
+      forex: {
+        name: 'Forex Market',
+        flag: '💱',
+        winRate: 66.7,
+        trades: 24,
+        wins: 16,
+        losses: 8,
+        tradesText: '24 trades (16W · 8L)',
+        pnlUSD: 342.50 // ~₹28,598.75
+      },
+      crypto: {
+        name: 'Crypto Market',
+        flag: '🪙',
+        winRate: 60.0,
+        trades: 10,
+        wins: 6,
+        losses: 4,
+        tradesText: '10 trades (6W · 4L)',
+        pnlUSD: 191.27 // ~₹15,971.05
+      }
+    },
+    strategies: [
+      { name: 'Breakout', winRate: 76.0, trades: 25, avgRR: '1 : 2.50', pf: 3.20, pnlUSD: 457.49, status: 'Top Edge' }, // ~₹38,200
+      { name: 'Trend Follow', winRate: 71.4, trades: 21, avgRR: '1 : 2.60', pf: 2.80, pnlUSD: 320.96, status: 'Strong' }, // ~₹26,800
+      { name: 'Pullback 20EMA', winRate: 64.3, trades: 14, avgRR: '1 : 2.00', pf: 2.10, pnlUSD: 173.65, status: 'Consistent' }, // ~₹14,500
+      { name: 'Mean Reversion', winRate: 61.1, trades: 18, avgRR: '1 : 2.10', pf: 2.40, pnlUSD: 232.34, status: 'Moderate' }, // ~₹19,400
+      { name: 'Opening Range Breakout', winRate: 45.5, trades: 11, avgRR: '1 : 1.70', pf: 0.85, pnlUSD: -68.26, status: 'Review' } // ~-₹5,700
+    ]
+  };
 
   // Indian Portfolio Dataset
   const INDIA_DATA = {
@@ -389,7 +617,11 @@
     const w = cssW - pad.l - pad.r;
     const h = cssH - pad.t - pad.b;
 
-    const bals = pts.map(p => p.balance);
+    const isCombined = _activeMarket === 'combined';
+    const curr = CURRENCIES[_selectedCurrency] || CURRENCIES.USD;
+    const rate = isCombined ? (curr.rate || 1.0) : 1.0;
+
+    const bals = pts.map(p => (p.balanceUSD !== undefined ? p.balanceUSD * rate : (p.balance || 0)));
     const minB = Math.min(...bals);
     const maxB = Math.max(...bals);
     const span = maxB - minB || 10000;
@@ -413,7 +645,22 @@
       ctx.fillStyle = '#6b7280';
       ctx.font = '10px "IBM Plex Mono", monospace';
       ctx.textAlign = 'right';
-      const label = _activeMarket === 'forex' ? `$${Math.round(gVal / 1000)}k` : `₹${(gVal / 100000).toFixed(1)}L`;
+
+      let label = '';
+      if (isCombined) {
+        if (curr.code === 'INR') {
+          label = `₹${(gVal / 100000).toFixed(1)}L`;
+        } else if (curr.code === 'JPY') {
+          label = `¥${Math.round(gVal / 1000)}k`;
+        } else {
+          label = `${curr.prefix}${Math.round(gVal / 1000)}k`;
+        }
+      } else if (_activeMarket === 'forex') {
+        label = `$${Math.round(gVal / 1000)}k`;
+      } else {
+        label = `₹${(gVal / 100000).toFixed(1)}L`;
+      }
+
       ctx.fillText(label, pad.l - 8, gy + 3);
     }
 
@@ -423,9 +670,9 @@
     grad.addColorStop(1, 'rgba(72, 183, 154, 0.00)');
 
     ctx.beginPath();
-    ctx.moveTo(toX(0), toY(pts[0].balance));
+    ctx.moveTo(toX(0), toY(bals[0]));
     for (let i = 1; i < pts.length; i++) {
-      ctx.lineTo(toX(i), toY(pts[i].balance));
+      ctx.lineTo(toX(i), toY(bals[i]));
     }
     ctx.lineTo(toX(pts.length - 1), pad.t + h);
     ctx.lineTo(toX(0), pad.t + h);
@@ -435,9 +682,9 @@
 
     // Main line
     ctx.beginPath();
-    ctx.moveTo(toX(0), toY(pts[0].balance));
+    ctx.moveTo(toX(0), toY(bals[0]));
     for (let i = 1; i < pts.length; i++) {
-      ctx.lineTo(toX(i), toY(pts[i].balance));
+      ctx.lineTo(toX(i), toY(bals[i]));
     }
     ctx.strokeStyle = '#48B79A';
     ctx.lineWidth = 2.5;
@@ -446,7 +693,7 @@
     // Data points & X labels
     pts.forEach((p, i) => {
       const cx = toX(i);
-      const cy = toY(p.balance);
+      const cy = toY(bals[i]);
 
       ctx.beginPath();
       ctx.arc(cx, cy, 3.5, 0, Math.PI * 2);
@@ -849,9 +1096,17 @@
     const list = document.getElementById('portfolioWeekdayList');
     if (!list) return;
 
-    const isFx = _activeMarket === 'forex';
     list.innerHTML = data.dailyPerformance.map(d => {
-      const isProfit = d.pnl >= 0;
+      let pnlDisplay = '';
+      let isProfit = true;
+      if (d.pnlUSD !== undefined) {
+        pnlDisplay = formatMoney(d.pnlUSD, { signed: true });
+        isProfit = d.pnlUSD >= 0;
+      } else {
+        pnlDisplay = d.pnlText || fmtCurrency(d.pnl, _activeMarket === 'forex');
+        isProfit = (d.pnl !== undefined ? d.pnl >= 0 : !pnlDisplay.includes('−') && !pnlDisplay.includes('-'));
+      }
+
       return `
         <div class="portfolio-weekday-card">
           <div class="portfolio-wd-header">
@@ -865,7 +1120,7 @@
             </div>
           </div>
           <div class="portfolio-wd-pnl ${isProfit ? 'text-profit' : 'text-loss'}">
-            ${fmtCurrency(d.pnl, isFx)}
+            ${pnlDisplay}
           </div>
         </div>
       `;
@@ -874,8 +1129,9 @@
 
   /* ── Populate DOM with Data ── */
   function updatePortfolioUI() {
-    const data = _activeMarket === 'forex' ? FOREX_DATA : INDIA_DATA;
+    const data = _activeMarket === 'combined' ? COMBINED_DATA : (_activeMarket === 'forex' ? FOREX_DATA : INDIA_DATA);
     const isFx = _activeMarket === 'forex';
+    const isCombined = _activeMarket === 'combined';
 
     // 1. Core 7 Metric Cards
     const elWinRate = document.getElementById('pmWinRate');
@@ -887,43 +1143,120 @@
     const elProfitFactor = document.getElementById('pmProfitFactor');
 
     if (elWinRate) elWinRate.textContent = `${data.metrics.winRate}%`;
-    if (elAvgWin) elAvgWin.textContent = fmtCurrency(data.metrics.avgWin, isFx);
-    if (elAvgLoss) elAvgLoss.textContent = fmtCurrency(data.metrics.avgLoss, isFx);
+
+    if (elAvgWin) {
+      if (isCombined && data.metrics.avgWinUSD !== undefined) {
+        elAvgWin.textContent = formatMoney(data.metrics.avgWinUSD, { signed: true });
+      } else {
+        elAvgWin.textContent = data.metrics.avgWinText || fmtCurrency(data.metrics.avgWin, isFx);
+      }
+    }
+
+    if (elAvgLoss) {
+      if (isCombined && data.metrics.avgLossUSD !== undefined) {
+        elAvgLoss.textContent = formatMoney(data.metrics.avgLossUSD, { signed: true });
+      } else {
+        elAvgLoss.textContent = data.metrics.avgLossText || fmtCurrency(data.metrics.avgLoss, isFx);
+      }
+    }
+
     if (elBigWin) {
-      elBigWin.textContent = fmtCurrency(data.metrics.bigWin, isFx);
+      if (isCombined && data.metrics.bigWinUSD !== undefined) {
+        elBigWin.textContent = formatMoney(data.metrics.bigWinUSD, { signed: true });
+      } else {
+        elBigWin.textContent = fmtCurrency(data.metrics.bigWin, isFx);
+      }
       const sub = document.getElementById('pmBigWinSub');
-      if (sub) sub.textContent = data.metrics.bigWinSymbol;
+      if (sub) sub.textContent = data.metrics.bigWinSymbol || '';
     }
+
     if (elBigLoss) {
-      elBigLoss.textContent = fmtCurrency(data.metrics.bigLoss, isFx);
+      if (isCombined && data.metrics.bigLossUSD !== undefined) {
+        elBigLoss.textContent = formatMoney(data.metrics.bigLossUSD, { signed: true });
+      } else {
+        elBigLoss.textContent = fmtCurrency(data.metrics.bigLoss, isFx);
+      }
       const sub = document.getElementById('pmBigLossSub');
-      if (sub) sub.textContent = data.metrics.bigLossSymbol;
+      if (sub) sub.textContent = data.metrics.bigLossSymbol || '';
     }
+
     if (elAvgRR) elAvgRR.textContent = data.metrics.avgRR;
     if (elProfitFactor) elProfitFactor.textContent = data.metrics.profitFactor.toFixed(2);
 
     // 2. Long vs Short Cards
     const ls = data.longShort;
-    const elLongWr = document.getElementById('plsLongWinRate');
     const elLongPnl = document.getElementById('plsLongPnl');
+    const elLongWinsLabel = document.getElementById('plsLongWinsLabel');
+    const elLongWinsVal = document.getElementById('plsLongWinsVal');
+    const elLongWr = document.getElementById('plsLongWinRate');
+    const elLongLossesLabel = document.getElementById('plsLongLossesLabel');
+    const elLongLossesVal = document.getElementById('plsLongLossesVal');
     const elLongTrades = document.getElementById('plsLongTrades');
     const elLongPf = document.getElementById('plsLongPF');
     const elLongRR = document.getElementById('plsLongRR');
 
+    if (elLongPnl) {
+      if (isCombined && ls.long.pnlUSD !== undefined) {
+        elLongPnl.textContent = formatMoney(ls.long.pnlUSD, { signed: true });
+      } else {
+        elLongPnl.textContent = ls.long.pnlText || fmtCurrency(ls.long.pnl, isFx);
+      }
+    }
+    if (elLongWinsLabel) elLongWinsLabel.textContent = ls.long.winsLabel || `Wins (${ls.long.wins})`;
+    if (elLongWinsVal) {
+      if (isCombined && ls.long.winsValUSD !== undefined) {
+        elLongWinsVal.textContent = formatMoney(ls.long.winsValUSD);
+      } else {
+        elLongWinsVal.textContent = ls.long.winsVal || fmtCurrency(ls.long.wins * 42, isFx);
+      }
+    }
     if (elLongWr) elLongWr.textContent = `${ls.long.winRate}%`;
-    if (elLongPnl) elLongPnl.textContent = fmtCurrency(ls.long.pnl, isFx);
+    if (elLongLossesLabel) elLongLossesLabel.textContent = ls.long.lossesLabel || `Losses (${ls.long.losses})`;
+    if (elLongLossesVal) {
+      if (isCombined && ls.long.lossesValUSD !== undefined) {
+        elLongLossesVal.textContent = formatMoney(ls.long.lossesValUSD);
+      } else {
+        elLongLossesVal.textContent = ls.long.lossesVal || fmtCurrency(-Math.abs(ls.long.losses * 35), isFx);
+      }
+    }
     if (elLongTrades) elLongTrades.textContent = `${ls.long.trades} trades (${ls.long.wins}W · ${ls.long.losses}L)`;
     if (elLongPf) elLongPf.textContent = `PF ${ls.long.profitFactor}`;
     if (elLongRR) elLongRR.textContent = `R:R ${ls.long.avgRR}`;
 
-    const elShortWr = document.getElementById('plsShortWinRate');
     const elShortPnl = document.getElementById('plsShortPnl');
+    const elShortWinsLabel = document.getElementById('plsShortWinsLabel');
+    const elShortWinsVal = document.getElementById('plsShortWinsVal');
+    const elShortWr = document.getElementById('plsShortWinRate');
+    const elShortLossesLabel = document.getElementById('plsShortLossesLabel');
+    const elShortLossesVal = document.getElementById('plsShortLossesVal');
     const elShortTrades = document.getElementById('plsShortTrades');
     const elShortPf = document.getElementById('plsShortPF');
     const elShortRR = document.getElementById('plsShortRR');
 
+    if (elShortPnl) {
+      if (isCombined && ls.short.pnlUSD !== undefined) {
+        elShortPnl.textContent = formatMoney(ls.short.pnlUSD, { signed: true });
+      } else {
+        elShortPnl.textContent = ls.short.pnlText || fmtCurrency(ls.short.pnl, isFx);
+      }
+    }
+    if (elShortWinsLabel) elShortWinsLabel.textContent = ls.short.winsLabel || `Wins (${ls.short.wins})`;
+    if (elShortWinsVal) {
+      if (isCombined && ls.short.winsValUSD !== undefined) {
+        elShortWinsVal.textContent = formatMoney(ls.short.winsValUSD);
+      } else {
+        elShortWinsVal.textContent = ls.short.winsVal || fmtCurrency(ls.short.wins * 35, isFx);
+      }
+    }
     if (elShortWr) elShortWr.textContent = `${ls.short.winRate}%`;
-    if (elShortPnl) elShortPnl.textContent = fmtCurrency(ls.short.pnl, isFx);
+    if (elShortLossesLabel) elShortLossesLabel.textContent = ls.short.lossesLabel || `Losses (${ls.short.losses})`;
+    if (elShortLossesVal) {
+      if (isCombined && ls.short.lossesValUSD !== undefined) {
+        elShortLossesVal.textContent = formatMoney(ls.short.lossesValUSD);
+      } else {
+        elShortLossesVal.textContent = ls.short.lossesVal || fmtCurrency(-Math.abs(ls.short.losses * 37), isFx);
+      }
+    }
     if (elShortTrades) elShortTrades.textContent = `${ls.short.trades} trades (${ls.short.wins}W · ${ls.short.losses}L)`;
     if (elShortPf) elShortPf.textContent = `PF ${ls.short.profitFactor}`;
     if (elShortRR) elShortRR.textContent = `R:R ${ls.short.avgRR}`;
@@ -940,33 +1273,53 @@
     if (elRiskCompliance) elRiskCompliance.textContent = `${beh.riskCompliance}%`;
     if (elRevenge) elRevenge.textContent = `${beh.revengeTradingFlags} Flags`;
 
-    // 4. Broker-Specific Views (Indian Instrument vs Forex Session)
+    // 4. Broker-Specific Views (Combined Multi-Market vs Indian Instrument vs Forex Session)
+    const combinedView = document.getElementById('portfolioCombinedMarketView');
     const indianView = document.getElementById('portfolioIndianInstrumentView');
     const forexView = document.getElementById('portfolioForexSessionView');
 
-    if (_activeMarket === 'india') {
-      if (indianView) indianView.hidden = false;
+    if (_activeMarket === 'combined') {
+      if (combinedView) combinedView.hidden = false;
+      if (indianView) indianView.hidden = true;
       if (forexView) forexView.hidden = true;
 
-      const stk = data.instrumentPerformance.stocks;
-      const fo = data.instrumentPerformance.fo;
+      const mk = data.marketPerformance || COMBINED_DATA.marketPerformance;
+      if (mk) {
+        // 1. Indian Market Card
+        const elIndWr = document.getElementById('pmkIndianWinRate');
+        const elIndBar = document.getElementById('pmkIndianBar');
+        const elIndTrades = document.getElementById('pmkIndianTrades');
+        const elIndPnl = document.getElementById('pmkIndianPnl');
 
-      const elStkWr = document.getElementById('pinsStockWinRate');
-      const elStkPnl = document.getElementById('pinsStockPnl');
-      const elStkTrades = document.getElementById('pinsStockTrades');
+        if (elIndWr) elIndWr.textContent = `${mk.indian.winRate}% Win Rate`;
+        if (elIndBar) elIndBar.style.width = `${mk.indian.winRate}%`;
+        if (elIndTrades) elIndTrades.textContent = mk.indian.tradesText;
+        if (elIndPnl) elIndPnl.textContent = `${formatMoney(mk.indian.pnlUSD, { signed: true })} P&L`;
 
-      if (elStkWr) elStkWr.textContent = `${stk.winRate}%`;
-      if (elStkPnl) elStkPnl.textContent = fmtCurrency(stk.pnl, false);
-      if (elStkTrades) elStkTrades.textContent = `${stk.trades} trades (${stk.wins}W · ${stk.losses}L)`;
+        // 2. Forex Market Card
+        const elFxWr = document.getElementById('pmkForexWinRate');
+        const elFxBar = document.getElementById('pmkForexBar');
+        const elFxTrades = document.getElementById('pmkForexTrades');
+        const elFxPnl = document.getElementById('pmkForexPnl');
 
-      const elFoWr = document.getElementById('pinsFoWinRate');
-      const elFoPnl = document.getElementById('pinsFoPnl');
-      const elFoTrades = document.getElementById('pinsFoTrades');
+        if (elFxWr) elFxWr.textContent = `${mk.forex.winRate}% Win Rate`;
+        if (elFxBar) elFxBar.style.width = `${mk.forex.winRate}%`;
+        if (elFxTrades) elFxTrades.textContent = mk.forex.tradesText;
+        if (elFxPnl) elFxPnl.textContent = `${formatMoney(mk.forex.pnlUSD, { signed: true })} P&L`;
 
-      if (elFoWr) elFoWr.textContent = `${fo.winRate}%`;
-      if (elFoPnl) elFoPnl.textContent = fmtCurrency(fo.pnl, false);
-      if (elFoTrades) elFoTrades.textContent = `${fo.trades} trades (${fo.wins}W · ${fo.losses}L)`;
-    } else {
+        // 3. Crypto Market Card
+        const elCrWr = document.getElementById('pmkCryptoWinRate');
+        const elCrBar = document.getElementById('pmkCryptoBar');
+        const elCrTrades = document.getElementById('pmkCryptoTrades');
+        const elCrPnl = document.getElementById('pmkCryptoPnl');
+
+        if (elCrWr) elCrWr.textContent = `${mk.crypto.winRate}% Win Rate`;
+        if (elCrBar) elCrBar.style.width = `${mk.crypto.winRate}%`;
+        if (elCrTrades) elCrTrades.textContent = mk.crypto.tradesText;
+        if (elCrPnl) elCrPnl.textContent = `${formatMoney(mk.crypto.pnlUSD, { signed: true })} P&L`;
+      }
+    } else if (_activeMarket === 'forex') {
+      if (combinedView) combinedView.hidden = true;
       if (indianView) indianView.hidden = true;
       if (forexView) forexView.hidden = false;
 
@@ -984,13 +1337,50 @@
           </div>
         `).join('');
       }
+    } else {
+      // Indian Portfolio shows Instrument Breakdown (Stock vs F&O)
+      if (combinedView) combinedView.hidden = true;
+      if (indianView) indianView.hidden = false;
+      if (forexView) forexView.hidden = true;
+
+      const stk = data.instrumentPerformance.stocks;
+      const fo = data.instrumentPerformance.fo;
+
+      const elStkWr = document.getElementById('pinsStockWinRate');
+      const elStkPnl = document.getElementById('pinsStockPnl');
+      const elStkTrades = document.getElementById('pinsStockTrades');
+
+      if (elStkWr) elStkWr.textContent = `${stk.winRate}% Win Rate`;
+      if (elStkPnl) {
+        elStkPnl.textContent = stk.pnlText ? `${stk.pnlText} P&L` : `${fmtCurrency(stk.pnl, false)} P&L`;
+      }
+      if (elStkTrades) elStkTrades.textContent = stk.tradesText || `${stk.trades} trades (${stk.wins}W · ${stk.losses}L)`;
+
+      const elFoWr = document.getElementById('pinsFoWinRate');
+      const elFoPnl = document.getElementById('pinsFoPnl');
+      const elFoTrades = document.getElementById('pinsFoTrades');
+
+      if (elFoWr) elFoWr.textContent = `${fo.winRate}% Win Rate`;
+      if (elFoPnl) {
+        elFoPnl.textContent = fo.pnlText ? `${fo.pnlText} P&L` : `${fmtCurrency(fo.pnl, false)} P&L`;
+      }
+      if (elFoTrades) elFoTrades.textContent = fo.tradesText || `${fo.trades} trades (${fo.wins}W · ${fo.losses}L)`;
     }
 
     // 5. Strategy Review Table (Last section)
     const stratTbody = document.getElementById('portfolioStrategyTableBody');
     if (stratTbody && data.strategies) {
       stratTbody.innerHTML = data.strategies.map(s => {
-        const isWin = s.pnl >= 0;
+        let pnlText = '';
+        let isWin = true;
+        if (isCombined && s.pnlUSD !== undefined) {
+          pnlText = formatMoney(s.pnlUSD, { signed: true });
+          isWin = s.pnlUSD >= 0;
+        } else {
+          pnlText = s.pnlText || fmtCurrency(s.pnl, isFx);
+          isWin = s.pnl !== undefined ? s.pnl >= 0 : !pnlText.includes('−') && !pnlText.includes('-');
+        }
+
         return `
           <tr>
             <td><strong>${s.name}</strong></td>
@@ -1005,14 +1395,14 @@
             <td>${s.trades}</td>
             <td>${s.avgRR}</td>
             <td>${s.pf.toFixed(2)}</td>
-            <td class="${isWin ? 'text-profit' : 'text-loss'}"><strong>${fmtCurrency(s.pnl, isFx)}</strong></td>
+            <td class="${isWin ? 'text-profit' : 'text-loss'}"><strong>${pnlText}</strong></td>
             <td><span class="jtag ${s.status === 'Top Edge' ? 'jtag-active' : ''}">${s.status}</span></td>
           </tr>
         `;
       }).join('');
     }
 
-    // Top Stats & Balance Trackers
+    // Top Stats & Balance Trackers (Converts dynamically to selected currency)
     const elAccSize = document.getElementById('psAccountSize');
     const elTodayProf = document.getElementById('psTodayProfit');
     const elRadarScore = document.getElementById('psRadarScore');
@@ -1021,13 +1411,23 @@
     const elEqVal = document.getElementById('psEquityVal');
     const elEqMax = document.getElementById('psEquityMax');
 
-    if (elAccSize) elAccSize.textContent = '$5,000.00';
-    if (elTodayProf) elTodayProf.textContent = '$0.00';
-    if (elRadarScore) elRadarScore.textContent = '2.84';
-    if (elBalVal) elBalVal.textContent = '$4,631.66';
-    if (elBalMax) elBalMax.textContent = '$5,065.58 Max';
-    if (elEqVal) elEqVal.textContent = '$4,631.66';
-    if (elEqMax) elEqMax.textContent = '$5,124.10 Max';
+    if (isCombined && data.topStats) {
+      if (elAccSize) elAccSize.textContent = formatMoney(data.topStats.accountSizeUSD);
+      if (elTodayProf) elTodayProf.textContent = formatMoney(data.topStats.todayProfitUSD);
+      if (elRadarScore) elRadarScore.textContent = data.topStats.score;
+      if (elBalVal) elBalVal.textContent = formatMoney(data.topStats.balanceUSD);
+      if (elBalMax) elBalMax.textContent = `${formatMoney(data.topStats.balanceMaxUSD)} Max`;
+      if (elEqVal) elEqVal.textContent = formatMoney(data.topStats.equityUSD);
+      if (elEqMax) elEqMax.textContent = `${formatMoney(data.topStats.equityMaxUSD)} Max`;
+    } else if (data.topStats) {
+      if (elAccSize) elAccSize.textContent = data.topStats.accountSize || '$5,000.00';
+      if (elTodayProf) elTodayProf.textContent = data.topStats.todayProfit || '$0.00';
+      if (elRadarScore) elRadarScore.textContent = data.topStats.score || '2.84';
+      if (elBalVal) elBalVal.textContent = data.topStats.balance || '$4,631.66';
+      if (elBalMax) elBalMax.textContent = data.topStats.balanceMax || '$5,065.58 Max';
+      if (elEqVal) elEqVal.textContent = data.topStats.equity || '$4,631.66';
+      if (elEqMax) elEqMax.textContent = data.topStats.equityMax || '$5,124.10 Max';
+    }
 
     // Render Canvas Charts
     renderRadarScore();
@@ -1040,9 +1440,38 @@
     renderWeekdayBars(data);
   }
 
-  /* ── Switch Broker Mode (Indian vs Forex) ── */
+  /* ── Switch Currency Mode ── */
+  function setPortfolioCurrency(currCode) {
+    if (!CURRENCIES[currCode]) return;
+    _selectedCurrency = currCode;
+
+    const curr = CURRENCIES[currCode];
+    const flagEl = document.getElementById('portfolioCurrFlag');
+    const labelEl = document.getElementById('portfolioCurrLabel');
+    if (flagEl) flagEl.textContent = curr.flag;
+    if (labelEl) labelEl.textContent = curr.label;
+
+    document.querySelectorAll('.portfolio-curr-item').forEach(item => {
+      item.classList.toggle('active', item.getAttribute('data-curr') === currCode);
+    });
+
+    const currDropdown = document.getElementById('portfolioCurrencyDropdown');
+    if (currDropdown) currDropdown.classList.remove('dropdown-open');
+
+    updatePortfolioUI();
+  }
+
+  window.setPortfolioCurrency = setPortfolioCurrency;
+
+  /* ── Switch Broker Mode (Combined vs Indian vs Forex) ── */
   function switchPortfolioBroker(type, name) {
-    _activeMarket = type === 'forex' ? 'forex' : 'india';
+    if (type === 'combined' || type === 'all') {
+      _activeMarket = 'combined';
+    } else if (type === 'forex') {
+      _activeMarket = 'forex';
+    } else {
+      _activeMarket = 'india';
+    }
 
     const pbDropdown = document.getElementById('portfolioBrokerDropdown');
     if (pbDropdown) pbDropdown.classList.remove('dropdown-open');
@@ -1050,6 +1479,15 @@
     const btnSpan = document.querySelector('#portfolioBrokerDropdownBtn span:not(.p-dot)');
     if (btnSpan) {
       btnSpan.textContent = name ? `Connected: ${name}` : 'Connected Brokers';
+    }
+
+    // Navigate to portfolio view if not already visible
+    const pPage = document.getElementById('portfolioPage');
+    if (pPage && pPage.hidden) {
+      document.querySelectorAll('.page-container').forEach(p => { p.hidden = true; });
+      pPage.hidden = false;
+      window.location.hash = '#portfolio';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     updatePortfolioUI();
@@ -1070,7 +1508,7 @@
       };
     });
 
-    // Connected Brokers dropdown functionality (Matches Calculator Dropdown)
+    // Connected Brokers dropdown functionality
     const pbDropdown = document.getElementById('portfolioBrokerDropdown');
     const pbDropdownBtn = document.getElementById('portfolioBrokerDropdownBtn');
 
@@ -1089,9 +1527,28 @@
       });
     }
 
+    // Currency Switcher dropdown functionality
+    const currDropdown = document.getElementById('portfolioCurrencyDropdown');
+    const currBtn = document.getElementById('portfolioCurrencyBtn');
+
+    if (currBtn && currDropdown && !currBtn.dataset.initialized) {
+      currBtn.dataset.initialized = 'true';
+      currBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        currDropdown.classList.toggle('dropdown-open');
+      });
+
+      document.addEventListener('click', (e) => {
+        if (!currDropdown.contains(e.target)) {
+          currDropdown.classList.remove('dropdown-open');
+        }
+      });
+    }
+
     // Window resize handler
     window.addEventListener('resize', () => {
-      const data = _activeMarket === 'forex' ? FOREX_DATA : INDIA_DATA;
+      const data = _activeMarket === 'combined' ? COMBINED_DATA : (_activeMarket === 'forex' ? FOREX_DATA : INDIA_DATA);
       renderRadarScore();
       renderPnlCurve(data);
       renderInstrumentProfit(data);
@@ -1103,6 +1560,65 @@
 
     updatePortfolioUI();
   }
+
+  /* ── All Brokers Modal Functions ── */
+  let _activeBrokerModalCat = 'all';
+
+  function openAllBrokersModal() {
+    const pbDropdown = document.getElementById('portfolioBrokerDropdown');
+    if (pbDropdown) pbDropdown.classList.remove('dropdown-open');
+
+    const modal = document.getElementById('allBrokersModal');
+    if (modal) {
+      modal.style.display = 'flex';
+    }
+  }
+
+  function closeAllBrokersModal() {
+    const modal = document.getElementById('allBrokersModal');
+    if (modal) {
+      modal.style.display = 'none';
+    }
+  }
+
+  function setBrokerModalCat(cat, btnEl) {
+    _activeBrokerModalCat = cat;
+    document.querySelectorAll('.broker-modal-tab').forEach(b => {
+      b.style.background = 'rgba(255,255,255,0.05)';
+      b.style.color = 'var(--text)';
+      b.style.border = '1px solid rgba(255,255,255,0.1)';
+    });
+    if (btnEl) {
+      btnEl.style.background = 'var(--accent)';
+      btnEl.style.color = '#101322';
+      btnEl.style.border = 'none';
+    }
+    filterAllBrokersModal();
+  }
+
+  function filterAllBrokersModal() {
+    const searchVal = (document.getElementById('allBrokersSearchInput')?.value || '').toLowerCase().trim();
+    const cards = document.querySelectorAll('.broker-catalog-card');
+
+    cards.forEach(c => {
+      const cat = c.getAttribute('data-cat') || '';
+      const name = (c.getAttribute('data-name') || '').toLowerCase();
+      const matchesCat = (_activeBrokerModalCat === 'all' || cat === _activeBrokerModalCat);
+      const matchesSearch = !searchVal || name.includes(searchVal);
+
+      if (matchesCat && matchesSearch) {
+        c.style.display = 'flex';
+      } else {
+        c.style.display = 'none';
+      }
+    });
+  }
+
+  window.openAllBrokersModal = openAllBrokersModal;
+  window.closeAllBrokersModal = closeAllBrokersModal;
+  window.setBrokerModalCat = setBrokerModalCat;
+  window.filterAllBrokersModal = filterAllBrokersModal;
+  window.openBrokerModal = openAllBrokersModal;
 
   window.initPortfolioPage = initPortfolioPage;
 

@@ -5,33 +5,79 @@
 
 import { Router } from 'express';
 import { commentService } from '../services/CommentService.js';
+import { supportService } from '../services/SupportService.js';
 
 const router = Router();
 
 /**
- * Mock authentication middleware
- * In production, replace with actual authentication
+ * Strict authentication middleware
+ * Cryptographically verifies tokens and rejects unauthenticated requests with 401 Unauthorized
  */
-const requireAuth = (req, res, next) => {
-  // Mock user session - in production, get from JWT, session, or cookies
-  const userId = req.headers['x-user-id'] || req.query.userId || 'user_1';
-  const username = req.headers['x-username'] || req.query.username || 'Anonymous';
-  const userAvatar = req.headers['x-user-avatar'] || '';
-  const isPro = req.headers['x-user-pro'] === 'true' || false;
+const requireAuth = async (req, res, next) => {
+  try {
+    const authHeader = req.headers['authorization'] || req.headers['Authorization'] || '';
+    const userId = req.headers['x-user-id'];
+    const username = req.headers['x-username'];
 
-  req.user = {
-    id: userId,
-    username,
-    avatar: userAvatar,
-    isPro,
-  };
+    // Development-only fallback
+    if (
+      process.env.NODE_ENV !== 'production' &&
+      !authHeader &&
+      userId &&
+      userId.toLowerCase() !== 'guest' &&
+      userId.toLowerCase() !== 'anonymous'
+    ) {
+      req.user = {
+        id: String(userId).trim(),
+        username: username || req.headers['x-user-name'] || 'Trader',
+        avatar: req.headers['x-user-avatar'] || '',
+        isPro: req.headers['x-user-pro'] === 'true' || false,
+      };
+      return next();
+    }
 
-  next();
+    // Production and normal authentication path
+    let token = null;
+    if (authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring(7).trim();
+    } else if (req.headers['x-supabase-token']) {
+      token = String(req.headers['x-supabase-token']).trim();
+    }
+
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required. Please log in or sign up to comment.',
+      });
+    }
+
+    const { user, error } = await supportService.verifyUserToken(token);
+    if (error || !user) {
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid or expired authentication token. Please log in again.',
+      });
+    }
+
+    req.user = {
+      id: user.id,
+      username: user.user_metadata?.full_name || user.email?.split('@')[0] || username || 'Trader',
+      avatar: user.user_metadata?.avatar_url || req.headers['x-user-avatar'] || '',
+      isPro: user.app_metadata?.is_pro === true || false,
+    };
+
+    return next();
+  } catch (err) {
+    return res.status(401).json({
+      success: false,
+      error: 'Authentication required.',
+    });
+  }
 };
 
 /**
  * GET /api/market/comments
- * Get paginated comments with sorting
+ * Get paginated comments with sorting and market filter
  */
 router.get('/comments', (req, res) => {
   try {
@@ -40,6 +86,8 @@ router.get('/comments', (req, res) => {
       page = 1,
       limit = 20,
       parentId = null,
+      market = 'indian',
+      sentiment = null,
     } = req.query;
 
     const result = commentService.getComments({
@@ -47,6 +95,8 @@ router.get('/comments', (req, res) => {
       page: parseInt(page),
       limit: parseInt(limit),
       parentId,
+      market,
+      sentiment,
     });
 
     res.json({
@@ -68,7 +118,7 @@ router.get('/comments', (req, res) => {
  */
 router.post('/comments', requireAuth, (req, res) => {
   try {
-    const { content, parentId = null } = req.body;
+    const { content, parentId = null, sentiment = 'bullish', timeframe = '', market = 'indian' } = req.body;
 
     if (!content || content.trim().length === 0) {
       return res.status(400).json({
@@ -90,7 +140,10 @@ router.post('/comments', requireAuth, (req, res) => {
       content,
       req.user.avatar,
       req.user.isPro,
-      parentId
+      parentId,
+      sentiment,
+      timeframe,
+      market
     );
 
     res.status(201).json({
@@ -285,7 +338,10 @@ router.post('/comments/:id/reply', requireAuth, (req, res) => {
       content,
       req.user.avatar,
       req.user.isPro,
-      id // parentId
+      id, // parentId
+      parentComment.sentiment || 'neutral',
+      '',
+      parentComment.market || 'indian'
     );
 
     res.status(201).json({

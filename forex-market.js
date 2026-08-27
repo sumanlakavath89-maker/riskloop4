@@ -365,11 +365,24 @@
         previous: '—',
         forecast: '—',
         actual: '—'
+      },
+      {
+        date: 'Aug 21',
+        timeUTC: '01:15',
+        timeIST: '06:45',
+        event: 'PBoC 1-Year Loan Prime Rate (LPR)',
+        country: 'CN',
+        currency: 'CNY',
+        impact: 'high',
+        previous: '3.35%',
+        forecast: '3.35%',
+        actual: '—'
       }
     ]
   };
 
   const CURRENCY_FLAGS = {
+    INR: '🇮🇳',
     USD: '🇺🇸',
     EUR: '🇪🇺',
     GBP: '🇬🇧',
@@ -377,6 +390,7 @@
     AUD: '🇦🇺',
     CAD: '🇨🇦',
     CHF: '🇨🇭',
+    CNY: '🇨🇳',
     NZD: '🇳🇿'
   };
 
@@ -541,7 +555,17 @@
     };
   }
 
+  function isWeekendNow() {
+    const d = new Date();
+    const localDay = d.getDay(); // 0 = Sunday, 6 = Saturday
+    const utcDay = d.getUTCDay();
+    return localDay === 0 || localDay === 6 || utcDay === 0 || utcDay === 6;
+  }
+
   function isSessionOpen(session, nowMinUTC) {
+    // Weekend override: Saturday and Sunday are ALWAYS closed
+    if (isWeekendNow()) return false;
+
     if (session.openMinUTC < session.closeMinUTC) {
       return nowMinUTC >= session.openMinUTC && nowMinUTC < session.closeMinUTC;
     } else {
@@ -551,6 +575,10 @@
   }
 
   function getSessionTimeRemaining(session, nowMinUTC) {
+    if (isWeekendNow()) {
+      return { isOpen: false, text: 'Market Closed (Weekend)', mins: 0 };
+    }
+
     const isOpen = isSessionOpen(session, nowMinUTC);
     if (isOpen) {
       // Minutes until close
@@ -582,6 +610,9 @@
   }
 
   function isOverlapActive(overlap, nowMinUTC) {
+    // Weekend override: Saturday and Sunday are ALWAYS closed
+    if (isWeekendNow()) return false;
+
     if (overlap.openMinUTC < overlap.closeMinUTC) {
       return nowMinUTC >= overlap.openMinUTC && nowMinUTC < overlap.closeMinUTC;
     } else {
@@ -875,33 +906,6 @@
   }
 
   /* ============================================================
-     FOREX MAJORS & NEWS
-     ============================================================ */
-
-  function renderForexMajors() {
-    const tbody = document.getElementById('forexMajorsTableBody');
-    if (!tbody) return;
-
-    tbody.innerHTML = FOREX_MAJORS.map(m => {
-      const changeClass = m.positive ? 'rate-positive' : 'rate-negative';
-      return `
-        <tr>
-          <td>
-            <div style="font-weight:700; color:var(--text); font-size:13px;">${m.pair}</div>
-            <div style="font-size:11px; color:var(--text-muted);">${m.name}</div>
-          </td>
-          <td style="font-family:'IBM Plex Mono', monospace; font-weight:700; font-size:13px; color:var(--text);">${m.rate}</td>
-          <td>
-            <span class="rate-change-badge ${changeClass}">${m.change}</span>
-          </td>
-          <td style="font-family:'IBM Plex Mono', monospace; font-size:11.5px; color:var(--text-muted);">${m.spread} pips</td>
-          <td style="font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--text-muted);">${m.high} / ${m.low}</td>
-        </tr>
-      `;
-    }).join('');
-  }
-
-  /* ============================================================
      FOREX PAIR CORRELATIONS MODULE
      ============================================================ */
 
@@ -999,255 +1003,6 @@
           <td>${rowPair}</td>
           ${cellsHtml}
         </tr>
-      `;
-    }).join('');
-  }
-
-  /* ============================================================
-     FOREX COMMENTS COMPONENT
-     ============================================================ */
-
-  const DEFAULT_FOREX_COMMENTS = [
-    {
-      id: 'fx_c1',
-      username: 'Alex Vance',
-      avatar: 'AV',
-      isPro: true,
-      time: '25m ago',
-      content: 'EUR/USD is testing 1.0920 support ahead of today’s US Retail Sales. If US data comes in hotter than 0.4%, expect a swift dip towards 1.0880.',
-      likes: 18,
-      isLiked: false,
-      replies: [
-        {
-          id: 'fx_r1',
-          username: 'Sophia Ray',
-          avatar: 'SR',
-          isPro: false,
-          time: '12m ago',
-          content: 'Agreed. London session volume is building up. Watch the 13:00 UTC overlap start.',
-          likes: 5,
-          isLiked: false
-        }
-      ]
-    },
-    {
-      id: 'fx_c2',
-      username: 'Kenji Sato',
-      avatar: 'KS',
-      isPro: false,
-      time: '1h ago',
-      content: 'GBP/JPY broke 198.50 on solid Tokyo handover momentum. Strong +0.82 correlation with USD/JPY giving high conviction.',
-      likes: 12,
-      isLiked: false,
-      replies: []
-    },
-    {
-      id: 'fx_c3',
-      username: 'Elena Rostova',
-      avatar: 'ER',
-      isPro: true,
-      time: '2h ago',
-      content: 'Remember that EUR/USD and USD/CHF have a -0.94 inverse correlation. Do not double up on dollar shorts without sizing down.',
-      likes: 27,
-      isLiked: true,
-      replies: []
-    }
-  ];
-
-  function getForexComments() {
-    try {
-      const stored = localStorage.getItem('riskloop_forex_comments');
-      if (stored) {
-        return JSON.parse(stored);
-      }
-    } catch (e) {
-      console.error('Error loading stored forex comments:', e);
-    }
-    return DEFAULT_FOREX_COMMENTS;
-  }
-
-  function saveForexComments(comments) {
-    try {
-      localStorage.setItem('riskloop_forex_comments', JSON.stringify(comments));
-    } catch (e) {
-      console.error('Error saving forex comments:', e);
-    }
-  }
-
-  let forexComments = getForexComments();
-  let forexCommentSort = 'recent';
-
-  function initForexComments() {
-    const postBtn = document.getElementById('forexPostCommentBtn');
-    const textarea = document.getElementById('forexCommentTextarea');
-    const charCounter = document.getElementById('forexCharCounter');
-    const sortSelect = document.getElementById('forexCommentSortSelect');
-    const refreshBtn = document.getElementById('forexCommentRefreshBtn');
-    const emojiBtn = document.getElementById('forexEmojiBtn');
-
-    if (textarea && charCounter) {
-      textarea.addEventListener('input', () => {
-        const len = textarea.value.length;
-        charCounter.textContent = `${len}/2000`;
-        if (len > 2000) charCounter.style.color = '#ef4444';
-        else if (len > 1800) charCounter.style.color = '#f59e0b';
-        else charCounter.style.color = '#9198b4';
-      });
-
-      textarea.addEventListener('keydown', (e) => {
-        if (e.ctrlKey && e.key === 'Enter') {
-          postForexComment();
-        }
-      });
-    }
-
-    if (postBtn) {
-      postBtn.addEventListener('click', postForexComment);
-    }
-
-    if (sortSelect) {
-      sortSelect.addEventListener('change', (e) => {
-        forexCommentSort = e.target.value;
-        renderForexComments();
-      });
-    }
-
-    if (refreshBtn) {
-      refreshBtn.addEventListener('click', () => {
-        forexComments = getForexComments();
-        renderForexComments();
-      });
-    }
-
-    if (emojiBtn && textarea) {
-      emojiBtn.addEventListener('click', () => {
-        const emojis = ['🚀', '📈', '📉', '⚡', '🔥', '🛡️', '📊', '💰'];
-        const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
-        textarea.value += ` ${randomEmoji} `;
-        textarea.focus();
-        textarea.dispatchEvent(new Event('input'));
-      });
-    }
-
-    renderForexComments();
-  }
-
-  function postForexComment() {
-    const textarea = document.getElementById('forexCommentTextarea');
-    if (!textarea) return;
-
-    const content = textarea.value.trim();
-    if (!content) {
-      alert('Please enter a comment before posting.');
-      return;
-    }
-
-    if (content.length > 2000) {
-      alert('Comment exceeds 2000 character limit.');
-      return;
-    }
-
-    const newComment = {
-      id: 'fx_' + Date.now(),
-      username: 'ForexTrader_' + Math.floor(Math.random() * 900 + 100),
-      avatar: 'FT',
-      isPro: true,
-      time: 'Just now',
-      content: content,
-      likes: 0,
-      isLiked: false,
-      replies: []
-    };
-
-    forexComments.unshift(newComment);
-    saveForexComments(forexComments);
-
-    textarea.value = '';
-    const charCounter = document.getElementById('forexCharCounter');
-    if (charCounter) charCounter.textContent = '0/2000';
-
-    renderForexComments();
-  }
-
-  function toggleLikeForexComment(commentId) {
-    forexComments = forexComments.map(c => {
-      if (c.id === commentId) {
-        return {
-          ...c,
-          isLiked: !c.isLiked,
-          likes: c.isLiked ? c.likes - 1 : c.likes + 1
-        };
-      }
-      return c;
-    });
-    saveForexComments(forexComments);
-    renderForexComments();
-  }
-
-  function renderForexComments() {
-    const feed = document.getElementById('forexCommentsFeed');
-    if (!feed) return;
-
-    let list = [...forexComments];
-    if (forexCommentSort === 'liked') {
-      list.sort((a, b) => b.likes - a.likes);
-    }
-
-    if (list.length === 0) {
-      feed.innerHTML = `
-        <div style="text-align:center; padding:30px; color:var(--text-muted);">
-          No comments yet. Be the first to share a Forex trade note!
-        </div>
-      `;
-      return;
-    }
-
-    feed.innerHTML = list.map(c => {
-      const proBadge = c.isPro ? '<span class="user-badge-pro">PRO</span>' : '';
-      const likeBtnClass = c.isLiked ? 'action-btn-liked' : '';
-
-      const repliesHtml = c.replies && c.replies.length > 0 ? `
-        <div class="comment-replies">
-          ${c.replies.map(r => `
-            <div class="comment-item comment-reply">
-              <div class="comment-avatar">
-                <div class="avatar-initials">${r.avatar}</div>
-              </div>
-              <div class="comment-content">
-                <div class="comment-author">
-                  <span class="author-name">${r.username}</span>
-                  <span class="comment-time">${r.time}</span>
-                </div>
-                <div class="comment-text">${r.content}</div>
-              </div>
-            </div>
-          `).join('')}
-        </div>
-      ` : '';
-
-      return `
-        <div class="comment-item" id="comment-${c.id}">
-          <div class="comment-avatar">
-            <div class="avatar-initials">${c.avatar}</div>
-          </div>
-          <div class="comment-content">
-            <div class="comment-header-row">
-              <div class="comment-author">
-                <span class="author-name">${c.username}</span>
-                ${proBadge}
-                <span class="comment-time">${c.time}</span>
-              </div>
-            </div>
-            <div class="comment-text">${c.content}</div>
-            <div class="comment-actions">
-              <button class="comment-action-btn ${likeBtnClass}" onclick="window.likeForexComment('${c.id}')">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="${c.isLiked ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
-                <span>${c.likes}</span>
-              </button>
-            </div>
-            ${repliesHtml}
-          </div>
-        </div>
       `;
     }).join('');
   }
@@ -1421,7 +1176,6 @@
     initForexEconomicCalendar();
     initForexCalendarNews();
     initForexTradingSessions();
-    renderForexMajors();
     initForexCorrelation();
     initForexComments();
   }

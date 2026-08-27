@@ -85,6 +85,7 @@
     return {
       hours: istTime.getHours(),
       minutes: istTime.getMinutes(),
+      dayOfWeek: istTime.getDay(), // 0 = Sunday, 6 = Saturday
       totalMinutes: istTime.getHours() * 60 + istTime.getMinutes()
     };
   }
@@ -95,18 +96,31 @@
   }
 
   function isSessionActive(session, currentTime) {
+    const ist = getCurrentISTTime();
+    // Weekend override: Saturday and Sunday are ALWAYS closed
+    if (ist.dayOfWeek === 0 || ist.dayOfWeek === 6) {
+      return false;
+    }
+
+    const currentMinutes = typeof currentTime === 'number' ? currentTime : ist.totalMinutes;
     const startMinutes = timeStringToMinutes(session.start);
     const endMinutes = timeStringToMinutes(session.end);
     
     // Handle overnight sessions (like MCX)
     if (endMinutes < startMinutes) {
-      return currentTime >= startMinutes || currentTime <= endMinutes;
+      return currentMinutes >= startMinutes || currentMinutes <= endMinutes;
     }
     
-    return currentTime >= startMinutes && currentTime <= endMinutes;
+    return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
   }
 
   function getSessionStatus(session, currentTime) {
+    const ist = getCurrentISTTime();
+    // Weekend override: Saturday and Sunday are ALWAYS closed
+    if (ist.dayOfWeek === 0 || ist.dayOfWeek === 6) {
+      return 'closed';
+    }
+
     if (session.name === 'Pre-Open') {
       return isSessionActive(session, currentTime) ? 'pre' : 'closed';
     }
@@ -114,31 +128,46 @@
   }
 
   /* ============================================================
-     ECONOMIC CALENDAR (INDIA) — LIVE BACKEND INTEGRATION
+     ECONOMIC CALENDAR — FMP LIVE BACKEND INTEGRATION
      ============================================================ */
 
   let currentCalendarPeriod = 'today';
-  let liveIndiaCalendarEvents = [];
+  let liveCalendarState = {
+    events: [],
+    status: 'IDLE',
+    message: '',
+    isAvailable: false
+  };
   let isCalendarLoading = false;
 
-  async function fetchLiveIndiaCalendar() {
-    const backendBase = (typeof window !== 'undefined' && window.API_BASE_URL) || 'http://localhost:3000';
+  async function fetchLiveEconomicCalendar(period = 'today', forceRefresh = false) {
+    const backendBase = (typeof window !== 'undefined' && window.API_BASE_URL) || '';
     try {
-      const response = await fetch(`${backendBase}/api/economic-calendar?country=IN`, {
+      const url = `${backendBase}/api/market/economic-calendar?period=${encodeURIComponent(period)}${forceRefresh ? '&refresh=true' : ''}`;
+      const response = await fetch(url, {
         method: 'GET',
         headers: { 'Accept': 'application/json' }
       });
       if (response.ok) {
         const data = await response.json();
-        if (data && Array.isArray(data.events)) {
-          // Sort events chronologically (ascending)
-          return data.events.sort((a, b) => new Date(a.eventTime).getTime() - new Date(b.eventTime).getTime());
-        }
+        return data;
       }
+      const errJson = await response.json().catch(() => null);
+      return {
+        success: false,
+        status: errJson?.status || 'HTTP_ERROR',
+        message: errJson?.message || `HTTP ${response.status}: Failed to fetch calendar`,
+        events: []
+      };
     } catch (err) {
-      console.warn('[IndianMarket] Failed to fetch live economic calendar from backend:', err.message);
+      console.warn('[IndianMarket] Failed to fetch economic calendar from backend:', err.message);
+      return {
+        success: false,
+        status: 'NETWORK_ERROR',
+        message: 'Could not connect to RiskLoop market service.',
+        events: []
+      };
     }
-    return [];
   }
 
   function formatISTDateTime(isoString) {
@@ -162,40 +191,6 @@
     return { date: dateStr, time: timeStr };
   }
 
-  function filterIndiaEventsByPeriod(events, period) {
-    if (!Array.isArray(events) || events.length === 0) return [];
-
-    const now = new Date();
-    const todayIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(now);
-    
-    const tomorrow = new Date(now.getTime() + 24 * 3600 * 1000);
-    const tomorrowIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(tomorrow);
-
-    const weekAhead = new Date(now.getTime() + 7 * 24 * 3600 * 1000);
-
-    if (period === 'today') {
-      const todayEvents = events.filter(e => {
-        const evDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date(e.eventTime));
-        return evDate === todayIST;
-      });
-      return todayEvents.length > 0 ? todayEvents : events;
-    } else if (period === 'tomorrow') {
-      const tomorrowEvents = events.filter(e => {
-        const evDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date(e.eventTime));
-        return evDate === tomorrowIST;
-      });
-      return tomorrowEvents.length > 0 ? tomorrowEvents : events.filter(e => new Date(e.eventTime).getTime() >= now.getTime());
-    } else if (period === 'week') {
-      const weekEvents = events.filter(e => {
-        const t = new Date(e.eventTime).getTime();
-        return t >= (now.getTime() - 24 * 3600 * 1000) && t <= weekAhead.getTime();
-      });
-      return weekEvents.length > 0 ? weekEvents : events;
-    }
-
-    return events;
-  }
-
   function initEconomicCalendar() {
     const todayTab = document.querySelector('[data-period="today"]');
     const tomorrowTab = document.querySelector('[data-period="tomorrow"]');
@@ -213,7 +208,7 @@
       setActiveCalendarTab(todayTab, [tomorrowTab, weekTab]);
       currentCalendarPeriod = 'today';
       if (navDate) navDate.textContent = 'Today';
-      renderCurrentCalendarView();
+      loadCalendarData('today');
     });
 
     tomorrowTab.addEventListener('click', () => {
@@ -221,7 +216,7 @@
       setActiveCalendarTab(tomorrowTab, [todayTab, weekTab]);
       currentCalendarPeriod = 'tomorrow';
       if (navDate) navDate.textContent = 'Tomorrow';
-      renderCurrentCalendarView();
+      loadCalendarData('tomorrow');
     });
 
     weekTab.addEventListener('click', () => {
@@ -229,7 +224,7 @@
       setActiveCalendarTab(weekTab, [todayTab, tomorrowTab]);
       currentCalendarPeriod = 'week';
       if (navDate) navDate.textContent = 'This Week';
-      renderCurrentCalendarView();
+      loadCalendarData('week');
     });
 
     // View all button
@@ -237,8 +232,8 @@
       viewAllBtn.addEventListener('click', () => {
         currentCalendarPeriod = 'all';
         [todayTab, tomorrowTab, weekTab].forEach(t => t.classList.remove('calendar-tab-active'));
-        if (navDate) navDate.textContent = 'All India Events';
-        renderCurrentCalendarView();
+        if (navDate) navDate.textContent = 'All Economic Events';
+        loadCalendarData('all');
       });
     }
 
@@ -267,8 +262,8 @@
       });
     }
 
-    // Initial load from backend
-    loadCalendarData();
+    // Initial load from backend (defaults to Today)
+    loadCalendarData('today');
   }
 
   function setActiveCalendarTab(activeTab, otherTabs) {
@@ -276,7 +271,7 @@
     otherTabs.forEach(tab => tab.classList.remove('calendar-tab-active'));
   }
 
-  async function loadCalendarData() {
+  async function loadCalendarData(period = currentCalendarPeriod, forceRefresh = false) {
     const tbody = document.getElementById('calendarTableBody');
     if (!tbody) return;
 
@@ -288,37 +283,79 @@
       <tr>
         <td colspan="8" class="calendar-loading">
           <div class="loading-spinner"></div>
-          <span>Loading live India economic events...</span>
+          <span>Loading ${period === 'today' ? "today's" : period === 'tomorrow' ? "tomorrow's" : 'economic'} events from FMP...</span>
         </td>
       </tr>
     `;
 
     try {
-      liveIndiaCalendarEvents = await fetchLiveIndiaCalendar();
+      const response = await fetchLiveEconomicCalendar(period, forceRefresh);
+      liveCalendarState = response;
+      renderCalendarTable(tbody, response);
     } catch (err) {
       console.error('[IndianMarket] Error loading economic calendar:', err);
+      renderCalendarTable(tbody, {
+        success: false,
+        status: 'CLIENT_ERROR',
+        message: 'Unable to display calendar events.',
+        events: []
+      });
     } finally {
       isCalendarLoading = false;
     }
-
-    renderCurrentCalendarView();
   }
 
-  function renderCurrentCalendarView() {
-    const tbody = document.getElementById('calendarTableBody');
+  function renderCalendarTable(tbody, state) {
     if (!tbody) return;
 
-    const filtered = filterIndiaEventsByPeriod(liveIndiaCalendarEvents, currentCalendarPeriod);
-    renderCalendarTable(tbody, filtered);
-  }
+    const events = Array.isArray(state?.events) ? state.events : [];
+    const status = state?.status || '';
+    const message = state?.message || '';
 
-  function renderCalendarTable(tbody, events) {
-    if (!events || events.length === 0) {
+    // Handle Unconfigured / Restricted / Error states cleanly
+    if (!state?.success && events.length === 0) {
+      let title = 'Economic Calendar Unavailable';
+      let desc = message || 'Macroeconomic calendar feed is currently unavailable.';
+
+      if (status === 'KEY_NOT_CONFIGURED') {
+        title = 'FMP API Key Required';
+        desc = 'FMP_API_KEY is not configured in backend .env. Add your Financial Modeling Prep key to enable live events.';
+      } else if (status === 'PLAN_RESTRICTED') {
+        title = 'FMP Plan Restricted';
+        desc = 'The economic calendar endpoint is restricted on the configured FMP tier. Upgrade your Financial Modeling Prep plan for live macroeconomic events.';
+      } else if (status === 'UNAUTHORIZED') {
+        title = 'Invalid FMP Credentials';
+        desc = 'The FMP_API_KEY in backend .env is invalid or expired.';
+      } else if (status === 'RATE_LIMITED') {
+        title = 'FMP Rate Limit Reached';
+        desc = 'Exceeded free API call limit for Financial Modeling Prep. Cached data will refresh shortly.';
+      }
+
       tbody.innerHTML = `
         <tr>
-          <td colspan="8" class="calendar-loading" style="padding: 30px 20px;">
-            <div style="color: var(--text-muted); font-size: 13px;">No India economic events found</div>
-            <div style="margin-top: 6px; font-size: 11px; color: var(--text-secondary);">Waiting for MetaTrader 5 live calendar updates or scheduled releases</div>
+          <td colspan="8" class="calendar-loading" style="padding: 34px 20px;">
+            <div style="color: var(--text); font-size: 14px; font-weight: 600; margin-bottom: 6px;">${title}</div>
+            <div style="margin: 0 auto 14px; font-size: 12px; color: var(--text-muted); max-width: 500px; line-height: 1.4;">${desc}</div>
+            <button class="jbtn-ghost jbtn-sm" id="retryCalendarBtn" style="margin: 0 auto; padding: 4px 14px; font-size: 12px; cursor: pointer;">
+              Retry Refresh
+            </button>
+          </td>
+        </tr>
+      `;
+
+      const retryBtn = document.getElementById('retryCalendarBtn');
+      if (retryBtn) {
+        retryBtn.addEventListener('click', () => loadCalendarData(currentCalendarPeriod, true));
+      }
+      return;
+    }
+
+    if (events.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="8" class="calendar-loading" style="padding: 32px 20px;">
+            <div style="color: var(--text); font-size: 13px; font-weight: 600;">No economic events scheduled</div>
+            <div style="margin-top: 6px; font-size: 11px; color: var(--text-muted);">No major releases found for this selected timeframe.</div>
           </td>
         </tr>
       `;
@@ -332,9 +369,11 @@
       else if (impact === 'low' || impact === '1') impactClass = 'impact-low';
 
       const impactLabel = impact.charAt(0).toUpperCase() + impact.slice(1);
-      const { date, time } = formatISTDateTime(event.eventTime);
-      const currency = event.currency || 'INR';
-      const countryCode = event.countryCode || 'IN';
+      const { date, time } = formatISTDateTime(event.eventTime || event.date);
+      const currency = event.currency || 'USD';
+      const countryCode = event.countryCode || 'GLOBAL';
+      const countryFlag = event.countryFlag || '🌐';
+      const countryName = event.country || countryCode;
 
       return `
         <tr>
@@ -349,12 +388,12 @@
           <td class="cal-col-event">
             <div class="cal-event-cell">
               <div class="cal-event-title">${event.event || '—'}</div>
-              ${event.eventCode && event.eventCode !== event.event ? `<div style="font-size: 10px; color: var(--text-muted); font-family: monospace;">${event.eventCode}</div>` : ''}
+              ${event.unit ? `<div style="font-size: 10px; color: var(--text-muted); font-family: monospace;">Unit: ${event.unit}</div>` : ''}
             </div>
           </td>
           <td class="cal-col-country">
             <div class="cal-country">
-              <span class="cal-country-flag">🇮🇳</span>
+              <span class="cal-country-flag">${countryFlag}</span>
               <span>${countryCode} (${currency})</span>
             </div>
           </td>
@@ -641,59 +680,139 @@
     loadMoversData('gainers');
   }
 
-  function loadMoversData(type) {
+  let cachedMoversResponse = null;
+  let isFetchingMovers = false;
+
+  function updateMoversStatusBadge(response) {
+    const badge = document.getElementById('moversStatusBadge');
+    const text = document.getElementById('moversStatusText');
+
+    if (!badge || !text) return;
+
+    const isLive = Boolean(response?.isLive);
+    const label = response?.statusLabel || (isLive ? 'Live Market' : 'Market Closed • Showing previous session');
+
+    badge.className = `movers-status-badge ${isLive ? 'status-live' : 'status-closed'}`;
+    text.textContent = label;
+  }
+
+  async function fetchMoversFromAPI(forceRefresh = false) {
+    if (cachedMoversResponse && !forceRefresh) {
+      return cachedMoversResponse;
+    }
+
+    try {
+      isFetchingMovers = true;
+      const res = await fetch('/api/market/movers');
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}: Failed to fetch movers`);
+      }
+      const json = await res.json();
+      if (json && json.success && json.data) {
+        cachedMoversResponse = json;
+        return json;
+      }
+      throw new Error(json?.error || 'Invalid movers data received');
+    } finally {
+      isFetchingMovers = false;
+    }
+  }
+
+  async function loadMoversData(type, forceRefresh = false) {
     const tbody = document.getElementById('moversTableBody');
     if (!tbody) return;
 
-    // Show loading state
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="4" class="movers-loading">
-          <div class="loading-spinner"></div>
-          <span>Loading ${type}...</span>
-        </td>
-      </tr>
-    `;
+    // If we don't have cached data or forceRefresh, show loading state
+    if (!cachedMoversResponse || forceRefresh) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="4" class="movers-loading">
+            <div class="loading-spinner"></div>
+            <span>Loading ${type === 'gainers' ? 'top gainers' : 'top losers'}...</span>
+          </td>
+        </tr>
+      `;
+    }
 
-    // Simulate API call
-    setTimeout(() => {
-      const data = type === 'gainers' ? MOCK_GAINERS : MOCK_LOSERS;
-      renderMoversTable(tbody, data);
-    }, 500);
+    try {
+      const response = await fetchMoversFromAPI(forceRefresh);
+      updateMoversStatusBadge(response);
+
+      const items = (type === 'gainers' ? response.data?.gainers : response.data?.losers) || [];
+
+      if (!items || items.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="4" style="text-align: center; padding: 24px; color: var(--text-muted);">
+              No ${type} data available at this time.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      renderMoversTable(tbody, items);
+    } catch (err) {
+      console.warn('[IndianMarket] Top movers fetch error:', err);
+      // If we have previously cached session data, keep showing it with an updated status
+      if (cachedMoversResponse && cachedMoversResponse.data) {
+        updateMoversStatusBadge(cachedMoversResponse);
+        const items = (type === 'gainers' ? cachedMoversResponse.data?.gainers : cachedMoversResponse.data?.losers) || [];
+        renderMoversTable(tbody, items);
+        return;
+      }
+
+      // Show clean, friendly error state with retry button
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="4" class="movers-error" style="text-align: center; padding: 24px; color: var(--text-muted);">
+            <div style="margin-bottom: 8px; color: #f87171;">Unable to connect to market service.</div>
+            <button class="jbtn-ghost jbtn-sm" id="retryMoversBtn" style="margin: 0 auto; padding: 4px 12px; font-size: 12px; cursor: pointer;">Retry</button>
+          </td>
+        </tr>
+      `;
+      const retryBtn = document.getElementById('retryMoversBtn');
+      if (retryBtn) {
+        retryBtn.addEventListener('click', () => loadMoversData(type, true));
+      }
+    }
   }
 
   function renderMoversTable(tbody, data) {
     tbody.innerHTML = data.map(stock => {
-      const isPositive = stock.change > 0;
+      const numPrice = typeof stock.price === 'number' ? stock.price : parseFloat(stock.price) || 0;
+      const numChange = typeof stock.change === 'number' ? stock.change : parseFloat(stock.change) || 0;
+      const isPositive = numChange > 0;
       const changeSymbol = isPositive ? '+' : '';
       const changeClass = isPositive ? 'positive' : 'negative';
       const arrowIcon = isPositive ? 
         '<svg class="change-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>' :
         '<svg class="change-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
+      const chartArray = Array.isArray(stock.chart) && stock.chart.length > 0 ? stock.chart : [numPrice * 0.98, numPrice * 0.99, numPrice, numPrice * 1.01, numPrice];
 
       return `
         <tr>
           <td class="movers-col-company">
             <div class="company-cell">
-              <div class="company-logo">${stock.symbol.substring(0, 2)}</div>
+              <div class="company-logo">${(stock.symbol || 'ST').substring(0, 2)}</div>
               <div class="company-info">
-                <div class="company-name">${stock.name}</div>
+                <div class="company-name">${stock.name || stock.symbol}</div>
                 <div class="company-symbol">${stock.symbol}</div>
               </div>
             </div>
           </td>
           <td class="movers-col-chart">
             <div class="mini-chart">
-              <canvas width="120" height="40" data-chart='${JSON.stringify(stock.chart)}' data-positive="${isPositive}"></canvas>
+              <canvas width="120" height="40" data-chart='${JSON.stringify(chartArray)}' data-positive="${isPositive}"></canvas>
             </div>
           </td>
           <td class="movers-col-price">
-            <div class="price-cell">₹${stock.price.toFixed(2)}</div>
+            <div class="price-cell">₹${numPrice.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
           </td>
           <td class="movers-col-change">
             <div class="change-cell ${changeClass}">
               ${arrowIcon}
-              <span>${changeSymbol}${Math.abs(stock.change).toFixed(2)}%</span>
+              <span>${changeSymbol}${Math.abs(numChange).toFixed(2)}%</span>
             </div>
           </td>
         </tr>
@@ -1015,6 +1134,247 @@
   }
 
   /* ============================================================
+     FUTURES & OPTIONS (F&O) SECTION - ANGEL ONE MASTER LOT ENGINE
+     ============================================================ */
+
+  let cachedFOInstruments = null;
+  let currentFOCategory = 'all';
+  let currentFOContractType = 'options';
+  let currentFOSymbol = 'NIFTY';
+  let currentFOSearchQuery = '';
+  const DEFAULT_FO_VISIBLE_COUNT = 6; // Show 5 to 6 instruments by default
+
+  async function fetchFOInstruments() {
+    if (cachedFOInstruments && cachedFOInstruments.length > 0) {
+      return cachedFOInstruments;
+    }
+
+    try {
+      const res = await fetch('/api/market/fo-instruments');
+      if (res.ok) {
+        const json = await res.json();
+        if (json && json.success && Array.isArray(json.data)) {
+          cachedFOInstruments = json.data;
+          return cachedFOInstruments;
+        }
+      }
+    } catch (e) {
+      console.warn('[IndianMarket] Error fetching F&O instruments from API:', e);
+    }
+
+    // Resilient fallback using window.FO_INSTRUMENTS or static catalog
+    if (window.FO_INSTRUMENTS && window.FO_INSTRUMENTS.length > 0) {
+      cachedFOInstruments = window.FO_INSTRUMENTS.map(i => ({
+        symbol: i.symbol,
+        name: i.name,
+        exchange: i.exchange || 'NSE',
+        type: i.type || (['NIFTY', 'BANKNIFTY', 'FINNIFTY', 'MIDCPNIFTY', 'SENSEX', 'BANKEX'].includes(i.symbol) ? 'Index' : 'Stock'),
+        segment: ['NIFTY', 'BANKNIFTY', 'FINNIFTY', 'MIDCPNIFTY', 'SENSEX', 'BANKEX'].includes(i.symbol) ? 'Index Options / Futures' : 'Stock Options / Futures',
+        lotSize: i.lotSize || 1,
+        tickSize: i.tickSize || 0.05,
+        strikeStep: i.symbol === 'BANKNIFTY' ? 100 : (i.symbol === 'NIFTY' ? 50 : 20),
+        price: i.symbol === 'NIFTY' ? 24857.30 : (i.symbol === 'BANKNIFTY' ? 52134.80 : 1500),
+        change: 0.85,
+        source: 'ANGELONE_MASTER_DATA'
+      }));
+      return cachedFOInstruments;
+    }
+
+    return [];
+  }
+
+  function updateFOSpecsDisplay(item) {
+    if (!item) return;
+
+    const lotDisplay = document.getElementById('foDynamicLotSizeDisplay');
+    const lotStatus = document.getElementById('foLotSizeStatus');
+    const lotSub = document.getElementById('foLotSizeSub');
+    const priceDisplay = document.getElementById('foUnderlyingPriceDisplay');
+    const changeDisplay = document.getElementById('foUnderlyingChangeDisplay');
+    const contractValDisplay = document.getElementById('foContractValueDisplay');
+    const tickStrikeDisplay = document.getElementById('foTickStrikeDisplay');
+    const exchangeSegDisplay = document.getElementById('foExchangeSegmentDisplay');
+
+    const numPrice = typeof item.price === 'number' ? item.price : parseFloat(item.price) || 0;
+    const lotSize = item.lotSize || 1;
+    const contractValue = numPrice * lotSize;
+    const changeNum = typeof item.change === 'number' ? item.change : parseFloat(item.change) || 0;
+    const isPos = changeNum >= 0;
+
+    if (lotDisplay) {
+      lotDisplay.textContent = lotSize.toLocaleString('en-IN');
+    }
+
+    if (lotStatus) {
+      lotStatus.textContent = item.source === 'ANGELONE_SMARTAPI' ? 'Live SmartAPI' : 'Angel One Master';
+    }
+
+    if (lotSub) {
+      lotSub.textContent = `Exchange Lot Size: ${lotSize} shares / contract`;
+    }
+
+    if (priceDisplay) {
+      priceDisplay.textContent = `₹${numPrice.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+
+    if (changeDisplay) {
+      changeDisplay.textContent = `${isPos ? '+' : ''}${changeNum.toFixed(2)}% (1D)`;
+      changeDisplay.style.color = isPos ? 'var(--profit, #48b79a)' : 'var(--danger, #e0685a)';
+    }
+
+    if (contractValDisplay) {
+      contractValDisplay.textContent = `₹${contractValue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+
+    if (tickStrikeDisplay) {
+      tickStrikeDisplay.textContent = `₹${item.tickSize || '0.05'} • ${item.strikeStep || 50} pts step`;
+    }
+
+    if (exchangeSegDisplay) {
+      exchangeSegDisplay.textContent = `${item.exchange || 'NSE'} • ${item.segment || (item.type + ' Derivative')}`;
+    }
+  }
+
+  function filterAndRenderFOTable(instruments) {
+    let filtered = instruments || [];
+
+    // 1. Category Filter
+    if (currentFOCategory === 'index') {
+      filtered = filtered.filter(i => i.type === 'Index');
+    } else if (currentFOCategory === 'stock') {
+      filtered = filtered.filter(i => i.type === 'Stock');
+    }
+
+    // 2. Search Query Filter
+    const query = (currentFOSearchQuery || '').trim().toLowerCase();
+    if (query) {
+      filtered = filtered.filter(i => 
+        (i.symbol && i.symbol.toLowerCase().includes(query)) ||
+        (i.name && i.name.toLowerCase().includes(query)) ||
+        (i.exchange && i.exchange.toLowerCase().includes(query))
+      );
+      // When searching, show all matching instruments across the entire database
+      renderFOCatalogTable(filtered, true);
+    } else {
+      // When not searching, limit to default 5 to 6 visible instruments
+      renderFOCatalogTable(filtered.slice(0, DEFAULT_FO_VISIBLE_COUNT), false);
+    }
+  }
+
+  function renderFOCatalogTable(items, isSearching = false) {
+    const tbody = document.getElementById('foTableBody');
+    if (!tbody) return;
+
+    if (!items || items.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="5" style="text-align: center; padding: 32px 16px; color: var(--text-muted);">
+            <div style="font-size: 14px; font-weight: 600; margin-bottom: 4px; color: var(--text);">No matching F&amp;O instruments found</div>
+            <div style="font-size: 12px;">Try searching for a symbol like NIFTY, BANKNIFTY, RELIANCE, TCS, or HDFCBANK.</div>
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    tbody.innerHTML = items.map(item => {
+      const numPrice = typeof item.price === 'number' ? item.price : parseFloat(item.price) || 0;
+      const numChange = typeof item.change === 'number' ? item.change : parseFloat(item.change) || 0;
+      const isPos = numChange >= 0;
+      const arrowIcon = isPos ? 
+        '<svg class="change-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>' :
+        '<svg class="change-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
+
+      return `
+        <tr data-symbol="${item.symbol}">
+          <td class="movers-col-company">
+            <div class="company-cell">
+              <div class="company-logo">${(item.symbol || 'FO').substring(0, 2)}</div>
+              <div class="company-info">
+                <div class="company-name">${item.name || item.symbol}</div>
+                <div class="company-symbol">${item.symbol} • ${item.exchange || 'NSE'}</div>
+              </div>
+            </div>
+          </td>
+          <td>
+            <span style="font-size: 12px; color: var(--text-muted); font-weight: 500;">
+              ${item.type === 'Index' ? 'Index F&O' : 'Stock F&O'}
+            </span>
+          </td>
+          <td>
+            <div class="fo-lot-pill">
+              <span>Lot:</span>
+              <span>${item.lotSize}</span>
+            </div>
+          </td>
+          <td class="movers-col-price">
+            <div class="price-cell">₹${numPrice.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+          </td>
+          <td class="movers-col-change">
+            <div class="change-cell ${isPos ? 'positive' : 'negative'}">
+              ${arrowIcon}
+              <span>${isPos ? '+' : ''}${numChange.toFixed(2)}%</span>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  async function initFOMarketSection() {
+    const foSection = document.getElementById('foMarketSection');
+    if (!foSection) return;
+
+    const categoryPills = document.getElementById('foCategoryPills');
+    const searchInput = document.getElementById('foInstrumentSearchInput');
+    const clearSearchBtn = document.getElementById('foSearchClearBtn');
+
+    // Load instruments from Angel One API / Master
+    const instruments = await fetchFOInstruments();
+
+    // Category filter pills (All / Indices / Stocks)
+    if (categoryPills) {
+      const catButtons = categoryPills.querySelectorAll('[data-category]');
+      catButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          catButtons.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          currentFOCategory = btn.getAttribute('data-category');
+
+          filterAndRenderFOTable(instruments);
+        });
+      });
+    }
+
+    // Dynamic Search Input handler
+    if (searchInput) {
+      searchInput.addEventListener('input', (e) => {
+        currentFOSearchQuery = e.target.value;
+        if (clearSearchBtn) {
+          clearSearchBtn.hidden = !currentFOSearchQuery;
+        }
+        filterAndRenderFOTable(instruments);
+      });
+    }
+
+    // Clear search button handler
+    if (clearSearchBtn) {
+      clearSearchBtn.addEventListener('click', () => {
+        if (searchInput) {
+          searchInput.value = '';
+          searchInput.focus();
+        }
+        currentFOSearchQuery = '';
+        clearSearchBtn.hidden = true;
+        filterAndRenderFOTable(instruments);
+      });
+    }
+
+    // Initial table render (showing default 5-6 items)
+    filterAndRenderFOTable(instruments);
+  }
+
+  /* ============================================================
      INITIALIZATION
      ============================================================ */
 
@@ -1032,6 +1392,7 @@
     initSectors();
     initStocksNews();
     initFOUpdate();
+    initFOMarketSection();
     initEarnings();
   }
 

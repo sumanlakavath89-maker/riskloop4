@@ -60,6 +60,17 @@ export class UpstoxAdapter extends BaseBrokerAdapter {
   }
 
   /**
+   * Get Upstox OAuth2 Authorization URL
+   */
+  getLoginUrl(state = 'riskloop_upstox_auth') {
+    if (!this.apiKey) {
+      throw new Error('UPSTOX_API_KEY is required to generate authorization URL');
+    }
+    const redirect = encodeURIComponent(this.redirectUri);
+    return `https://api.upstox.com/v2/login/authorization/dialog?response_type=code&client_id=${this.apiKey}&redirect_uri=${redirect}&state=${encodeURIComponent(state)}`;
+  }
+
+  /**
    * Connect and authenticate with Upstox OAuth2
    * Expects credentials.authCode from OAuth2 flow
    */
@@ -407,17 +418,19 @@ export class UpstoxAdapter extends BaseBrokerAdapter {
   _normalizeFunds(upstoxData) {
     const data = upstoxData.data || {};
     const equity = data.equity || {};
+    const available = parseFloat(equity.available_margin) || 0;
+    const used = parseFloat(equity.used_margin) || 0;
     
     return new Funds({
       segment: 'EQUITY',
-      availableMargin: parseFloat(equity.available_margin) || 0,
-      usedMargin: parseFloat(equity.used_margin) || 0,
-      totalMargin: parseFloat(equity.available_margin) || 0 + parseFloat(equity.used_margin) || 0,
+      availableMargin: available,
+      usedMargin: used,
+      totalMargin: available + used,
       openingBalance: parseFloat(equity.opening_balance) || 0,
-      netBalance: parseFloat(equity.available_margin) || 0,
+      netBalance: available,
       realizedPnl: parseFloat(equity.realised_profit) || 0,
       unrealizedPnl: parseFloat(equity.unrealised_profit) || 0,
-      marginUsed: parseFloat(equity.used_margin) || 0,
+      marginUsed: used,
       collateral: parseFloat(equity.collateral) || 0,
       exposureMargin: 0,
       spanMargin: parseFloat(equity.span_margin) || 0,
@@ -560,9 +573,9 @@ export class UpstoxAdapter extends BaseBrokerAdapter {
       quantity: quantity,
       price: price,
       tradeValue: quantity * price,
-      tradeDate: upstoxData.trade_date ? upstoxData.trade_date.split(' ')[0] : '',
-      tradeTime: upstoxData.trade_date ? upstoxData.trade_date.split(' ')[1] : '',
-      timestamp: upstoxData.trade_date || '',
+      tradeDate: (upstoxData.trade_date || upstoxData.trade_timestamp || '').split(' ')[0] || (upstoxData.trade_date || upstoxData.trade_timestamp || '').split('T')[0] || '',
+      tradeTime: (upstoxData.trade_date || upstoxData.trade_timestamp || '').split(' ')[1] || (upstoxData.trade_date || upstoxData.trade_timestamp || '').split('T')[1] || '',
+      timestamp: upstoxData.trade_date || upstoxData.trade_timestamp || upstoxData.order_timestamp || '',
       metadata: {
         trade_id: upstoxData.trade_id,
         order_id: upstoxData.order_id,
@@ -703,198 +716,47 @@ export class UpstoxAdapter extends BaseBrokerAdapter {
   // ============================================================
 
   /**
-   * Get broker capabilities
+   * Get broker capabilities - strictly read-only
    */
   getCapabilities() {
     return {
-      supportedSegments: ['EQUITY', 'DERIVATIVE', 'CURRENCY', 'COMMODITY'],
-      supportedOrderTypes: ['MARKET', 'LIMIT', 'SL', 'SL-M'],
-      supportedProductTypes: ['D', 'I', 'MTF'],
-      supportedValidities: ['DAY', 'IOC'],
-      supportsWebSocket: true,
-      supportsOrderPlacement: true,
-      supportsOrderModification: true,
-      supportsOrderCancellation: true,
-      supportsAMO: true,
-      supportsGTT: true,
-      supportsBasketOrders: false,
+      profile: true,
+      funds: true,
+      positions: true,
+      orders: true,       // Order history for reconciliation only
+      holdings: true,
+      quotes: true,
+      tradeHistory: true, // Broker-confirmed executions only
+      placeOrder: false,  // RiskLoop NEVER places orders
+      modifyOrder: false, // RiskLoop NEVER modifies orders
+      cancelOrder: false, // RiskLoop NEVER cancels orders
     };
   }
 
+  // ============================================================
+  // READ-ONLY ARCHITECTURE ENFORCEMENT
+  // RiskLoop NEVER places, modifies, or cancels orders.
+  // ============================================================
+
   /**
-   * Place order
-   * POST /order/place
+   * Place order (Disabled)
    */
   async placeOrder(orderRequest) {
-    try {
-      this._log('Placing order on Upstox...', {
-        symbol: orderRequest.symbol,
-        quantity: orderRequest.quantity,
-        side: orderRequest.transactionType,
-      });
-      
-      // Validate order request
-      this._validateOrderRequest(orderRequest);
-      
-      // Map RiskLoop order to Upstox format
-      const upstoxOrder = this._mapOrderToUpstox(orderRequest);
-      
-      // Use HFT endpoint for better performance
-      const response = await axios.post(
-        'https://api-hft.upstox.com/v2/order/place',
-        upstoxOrder,
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'Authorization': `Bearer ${this.accessToken}`,
-          },
-        }
-      );
-      
-      if (!response.data || response.data.status !== 'success') {
-        throw new Error('Order placement failed');
-      }
-      
-      const orderId = response.data.data?.order_id;
-      
-      this._log('Order placed successfully', { orderId });
-      
-      return {
-        success: true,
-        orderId: orderId,
-        message: 'Order placed successfully',
-      };
-    } catch (error) {
-      this._error('Failed to place order: ' + error.message);
-      
-      if (error.response?.data) {
-        const errorMsg = error.response.data.message || error.response.data.error || 'Order placement failed';
-        throw new Error(errorMsg);
-      }
-      
-      throw error;
-    }
+    throw new Error('RiskLoop is a read-only analytics and journal platform. Placing orders is strictly disabled.');
   }
 
   /**
-   * Modify order
-   * PUT /v3/order/modify
+   * Modify order (Disabled)
    */
   async modifyOrder(orderId, modifications) {
-    try {
-      this._log('Modifying order on Upstox...', { orderId });
-      
-      // Validate modifications
-      if (!orderId) {
-        throw new Error('Order ID is required');
-      }
-      
-      // Build modification request
-      const modifyRequest = {
-        order_id: orderId,
-        validity: modifications.validity || 'DAY',
-        order_type: modifications.orderType || 'LIMIT',
-        price: modifications.price || 0,
-        trigger_price: modifications.triggerPrice || 0,
-        disclosed_quantity: modifications.disclosedQuantity || 0,
-        market_protection: modifications.marketProtection || 0,
-      };
-      
-      // Add quantity if provided
-      if (modifications.quantity) {
-        modifyRequest.quantity = modifications.quantity;
-      }
-      
-      // Use V3 endpoint for better latency info
-      const response = await axios.put(
-        'https://api-hft.upstox.com/v3/order/modify',
-        modifyRequest,
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'Authorization': `Bearer ${this.accessToken}`,
-          },
-        }
-      );
-      
-      if (!response.data || response.data.status !== 'success') {
-        throw new Error('Order modification failed');
-      }
-      
-      const modifiedOrderId = response.data.data?.order_id;
-      
-      this._log('Order modified successfully', {
-        orderId: modifiedOrderId,
-        latency: response.data.metadata?.latency,
-      });
-      
-      return {
-        success: true,
-        orderId: modifiedOrderId,
-        message: 'Order modified successfully',
-      };
-    } catch (error) {
-      this._error('Failed to modify order: ' + error.message);
-      
-      if (error.response?.data) {
-        const errorMsg = error.response.data.message || error.response.data.error || 'Order modification failed';
-        throw new Error(errorMsg);
-      }
-      
-      throw error;
-    }
+    throw new Error('RiskLoop is a read-only analytics and journal platform. Modifying orders is strictly disabled.');
   }
 
   /**
-   * Cancel order
-   * DELETE /order/cancel
+   * Cancel order (Disabled)
    */
   async cancelOrder(orderId) {
-    try {
-      this._log('Cancelling order on Upstox...', { orderId });
-      
-      if (!orderId) {
-        throw new Error('Order ID is required');
-      }
-      
-      // Use HFT endpoint for better performance
-      const response = await axios.delete(
-        'https://api-hft.upstox.com/v2/order/cancel',
-        {
-          params: { order_id: orderId },
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'Authorization': `Bearer ${this.accessToken}`,
-          },
-        }
-      );
-      
-      if (!response.data || response.data.status !== 'success') {
-        throw new Error('Order cancellation failed');
-      }
-      
-      const cancelledOrderId = response.data.data?.order_id;
-      
-      this._log('Order cancelled successfully', { orderId: cancelledOrderId });
-      
-      return {
-        success: true,
-        orderId: cancelledOrderId,
-        message: 'Order cancelled successfully',
-      };
-    } catch (error) {
-      this._error('Failed to cancel order: ' + error.message);
-      
-      if (error.response?.data) {
-        const errorMsg = error.response.data.message || error.response.data.error || 'Order cancellation failed';
-        throw new Error(errorMsg);
-      }
-      
-      throw error;
-    }
+    throw new Error('RiskLoop is a read-only analytics and journal platform. Cancelling orders is strictly disabled.');
   }
 
   // ============================================================

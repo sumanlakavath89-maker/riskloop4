@@ -92,6 +92,78 @@ class BrokerService {
         logo: '/logos/MetaTrader_5.png',
         enabled: true,
       },
+      icmarkets: {
+        id: 'icmarkets',
+        name: 'IC Markets',
+        type: 'forex',
+        adapter: MT5Adapter,
+        logo: '/logos/ic markets.png',
+        enabled: true,
+        isMT5: true,
+      },
+      pepperstone: {
+        id: 'pepperstone',
+        name: 'Pepperstone',
+        type: 'forex',
+        adapter: MT5Adapter,
+        logo: '/logos/pepperstone.png',
+        enabled: true,
+        isMT5: true,
+      },
+      fpmarkets: {
+        id: 'fpmarkets',
+        name: 'FP Markets',
+        type: 'forex',
+        adapter: MT5Adapter,
+        logo: '/logos/fp markets.png',
+        enabled: true,
+        isMT5: true,
+      },
+      xm: {
+        id: 'xm',
+        name: 'XM',
+        type: 'forex',
+        adapter: MT5Adapter,
+        logo: '/logos/XM-logo.jpg',
+        enabled: true,
+        isMT5: true,
+      },
+      fxtm: {
+        id: 'fxtm',
+        name: 'FXTM',
+        type: 'forex',
+        adapter: MT5Adapter,
+        logo: '/logos/fxtm-logo-r-dark.png',
+        enabled: true,
+        isMT5: true,
+      },
+      vantage: {
+        id: 'vantage',
+        name: 'Vantage',
+        type: 'forex',
+        adapter: MT5Adapter,
+        logo: '/logos/vantage.png',
+        enabled: true,
+        isMT5: true,
+      },
+      exness: {
+        id: 'exness',
+        name: 'Exness',
+        type: 'forex',
+        adapter: MT5Adapter,
+        logo: '/logos/exness.jpg',
+        enabled: true,
+        isMT5: true,
+      },
+      fusionmarkets: {
+        id: 'fusionmarkets',
+        name: 'Fusion Markets',
+        type: 'forex',
+        adapter: MT5Adapter,
+        logo: '/logos/fusion market.png',
+        enabled: true,
+        isMT5: true,
+      },
     };
 
     // Active adapter instances (keyed by session ID or user ID)
@@ -127,13 +199,44 @@ class BrokerService {
   }
 
   /**
+   * Normalize broker ID
+   */
+  _normalizeBrokerId(id) {
+    if (!id) return id;
+    const clean = id.replace(/[-_\s]/g, '').toLowerCase();
+    const aliasMap = {
+      'angelone': 'angelone',
+      'angel': 'angelone',
+      'fyers': 'fyers',
+      'dhan': 'dhan',
+      'upstox': 'upstox',
+      'shoonya': 'shoonya',
+      'aliceblue': 'aliceblue',
+      'kotakneo': 'kotakneo',
+      'samco': 'samco',
+      'mt5': 'mt5',
+      'metatrader5': 'mt5',
+      'icmarkets': 'icmarkets',
+      'pepperstone': 'pepperstone',
+      'fpmarkets': 'fpmarkets',
+      'xm': 'xm',
+      'fxtm': 'fxtm',
+      'vantage': 'vantage',
+      'exness': 'exness',
+      'fusionmarkets': 'fusionmarkets',
+    };
+    return aliasMap[clean] || clean;
+  }
+
+  /**
    * Create a broker adapter instance
    * @param {string} brokerId - Broker identifier
    * @param {Object} config - Optional configuration
    * @returns {BaseBrokerAdapter}
    */
   createAdapter(brokerId, config = {}) {
-    const broker = this.brokers[brokerId];
+    const normId = this._normalizeBrokerId(brokerId);
+    const broker = this.brokers[normId] || this.brokers[brokerId];
     
     if (!broker) {
       throw new Error(`Unknown broker: ${brokerId}`);
@@ -144,7 +247,11 @@ class BrokerService {
     }
 
     const AdapterClass = broker.adapter;
-    return new AdapterClass(config);
+    return new AdapterClass({
+      brokerId: normId,
+      brokerName: broker.name,
+      ...config,
+    });
   }
 
   /**
@@ -154,10 +261,11 @@ class BrokerService {
    * @param {Object} config - Optional configuration
    */
   getAdapter(sessionId, brokerId, config = {}) {
-    const key = `${sessionId}:${brokerId}`;
+    const normId = this._normalizeBrokerId(brokerId);
+    const key = `${sessionId}:${normId}`;
     
     if (!this.activeAdapters.has(key)) {
-      const adapter = this.createAdapter(brokerId, config);
+      const adapter = this.createAdapter(normId, config);
       this.activeAdapters.set(key, adapter);
     }
     

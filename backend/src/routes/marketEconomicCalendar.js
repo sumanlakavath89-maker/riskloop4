@@ -1,0 +1,312 @@
+/**
+ * Market Economic Calendar Route
+ * Fetches macroeconomic events primarily from Supabase (economic_events table),
+ * with fallback to Financial Modeling Prep (FMP) service.
+ * 
+ * Endpoint: GET /api/market/economic-calendar
+ */
+
+import { Router } from 'express';
+import { supabaseEconomicCalendarService } from '../services/SupabaseEconomicCalendarService.js';
+import { fmpEconomicCalendarService } from '../services/FMPEconomicCalendarService.js';
+
+const router = Router();
+
+// Country code to friendly name, currency, and flag mapping
+const COUNTRY_META = {
+  'IN': { name: 'India', currency: 'INR', flag: '🇮🇳' },
+  'US': { name: 'United States', currency: 'USD', flag: '🇺🇸' },
+  'EU': { name: 'Eurozone', currency: 'EUR', flag: '🇪🇺' },
+  'GB': { name: 'United Kingdom', currency: 'GBP', flag: '🇬🇧' },
+  'UK': { name: 'United Kingdom', currency: 'GBP', flag: '🇬🇧' },
+  'JP': { name: 'Japan', currency: 'JPY', flag: '🇯🇵' },
+  'CN': { name: 'China', currency: 'CNY', flag: '🇨🇳' },
+  'CA': { name: 'Canada', currency: 'CAD', flag: '🇨🇦' },
+  'AU': { name: 'Australia', currency: 'AUD', flag: '🇦🇺' },
+  'NZ': { name: 'New Zealand', currency: 'NZD', flag: '🇳🇿' },
+  'CH': { name: 'Switzerland', currency: 'CHF', flag: '🇨🇭' },
+  'DE': { name: 'Germany', currency: 'EUR', flag: '🇩🇪' },
+  'FR': { name: 'France', currency: 'EUR', flag: '🇫🇷' },
+  'IT': { name: 'Italy', currency: 'EUR', flag: '🇮🇹' },
+  'BR': { name: 'Brazil', currency: 'BRL', flag: '🇧🇷' },
+  'RU': { name: 'Russia', currency: 'RUB', flag: '🇷🇺' },
+  'KR': { name: 'South Korea', currency: 'KRW', flag: '🇰🇷' },
+};
+
+/**
+ * Helper: Resolve date range based on period name or explicit queries in Asia/Kolkata timezone
+ */
+function resolveDateRange(period, fromQuery, toQuery) {
+  if (fromQuery && toQuery) {
+    return { from: fromQuery, to: toQuery };
+  }
+  if (fromQuery && !toQuery) {
+    return { from: fromQuery, to: null };
+  }
+  if (!fromQuery && toQuery) {
+    return { from: null, to: toQuery };
+  }
+
+  if (period === 'all') {
+    return { from: null, to: null };
+  }
+
+  const now = new Date();
+  const getISTDate = (d) => {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Kolkata',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).format(d);
+  };
+
+  const todayStr = getISTDate(now);
+
+  if (period === 'today') {
+    return { from: todayStr, to: todayStr };
+  }
+
+  if (period === 'tomorrow') {
+    const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    const tomorrowStr = getISTDate(tomorrow);
+    return { from: tomorrowStr, to: tomorrowStr };
+  }
+
+  if (period === 'week' || period === 'this-week') {
+    const endOfWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const endStr = getISTDate(endOfWeek);
+    return { from: todayStr, to: endStr };
+  }
+
+  return { from: null, to: null };
+}
+
+/**
+ * Helper: Normalize a Supabase record into the frontend event schema
+ */
+function normalizeSupabaseEvent(raw, index) {
+  const countryCode = (raw.country_code || 'IN').toUpperCase().trim();
+  const meta = COUNTRY_META[countryCode] || {
+    name: raw.country || countryCode,
+    currency: 'INR',
+    flag: '🇮🇳'
+  };
+
+  const dateStr = raw.event_date ? String(raw.event_date).split('T')[0] : '—';
+  let timeStr = '—';
+  let isoEventTime = null;
+
+  if (raw.event_date) {
+    if (raw.event_time) {
+      timeStr = raw.event_time;
+      const combined = `${dateStr}T${raw.event_time}`;
+      const parsed = new Date(combined);
+      isoEventTime = isNaN(parsed.getTime()) ? `${dateStr}T00:00:00.000Z` : parsed.toISOString();
+    } else {
+      isoEventTime = `${dateStr}T00:00:00.000Z`;
+    }
+  } else {
+    isoEventTime = new Date().toISOString();
+  }
+
+  let impact = 'Medium';
+  if (raw.impact) {
+    const imp = String(raw.impact).toLowerCase();
+    if (imp.includes('high') || imp === '3') impact = 'High';
+    else if (imp.includes('low') || imp === '1') impact = 'Low';
+    else impact = 'Medium';
+  }
+
+  const unit = raw.unit || '';
+  const formatVal = (val) => {
+    if (val === null || val === undefined || val === '') return '—';
+    const num = parseFloat(val);
+    if (isNaN(num)) return String(val);
+    return unit ? `${num.toLocaleString('en-IN')}${unit}` : num.toLocaleString('en-IN');
+  };
+
+  return {
+    id: raw.id || `supabase-${countryCode}-${dateStr}-${index}`,
+    date: dateStr,
+    time: timeStr,
+    eventTime: isoEventTime,
+    event: raw.event_name || 'Economic Event',
+    country: raw.country || meta.name,
+    countryCode: countryCode,
+    countryFlag: meta.flag || '🇮🇳',
+    currency: meta.currency || 'INR',
+    impact: impact,
+    previous: formatVal(raw.previous),
+    forecast: formatVal(raw.forecast),
+    actual: formatVal(raw.actual),
+    rawPrevious: raw.previous,
+    rawForecast: raw.forecast,
+    rawActual: raw.actual,
+    unit: unit,
+    status: raw.status || 'upcoming',
+    description: raw.description || null,
+    source: raw.source || 'Supabase'
+  };
+}
+
+/**
+ * GET /api/market/economic-calendar
+ * Query Parameters:
+ *   ?period=today | tomorrow | week | this-week | all
+ *   ?from=YYYY-MM-DD
+ *   ?to=YYYY-MM-DD
+ *   ?country=IN | US | ALL
+ *   ?impact=high | medium | low
+ *   ?limit=50
+ *   ?refresh=true
+ */
+router.get('/', async (req, res) => {
+  try {
+    const {
+      period = 'today',
+      from,
+      to,
+      country,
+      countryCode,
+      impact,
+      limit,
+      refresh
+    } = req.query;
+
+    const forceRefresh = refresh === 'true' || refresh === '1';
+    const resolvedCountry = country || countryCode;
+    const targetCountryCode = (resolvedCountry && resolvedCountry !== 'ALL') ? resolvedCountry.toUpperCase().trim() : null;
+    const targetImpact = (impact && impact !== 'ALL') ? impact.toLowerCase().trim() : null;
+    const { from: fromDate, to: toDate } = resolveDateRange(period, from, to);
+    const parsedLimit = limit ? parseInt(limit, 10) : 50;
+
+    // ── 1. Primary: Fetch from Supabase economic_events ───────────────
+    try {
+      const supabaseFilters = {
+        countryCode: targetCountryCode,
+        impact: targetImpact,
+        from: fromDate,
+        to: toDate,
+        limit: parsedLimit
+      };
+
+      const supabaseRows = await supabaseEconomicCalendarService.getEvents(supabaseFilters);
+
+      if (Array.isArray(supabaseRows) && supabaseRows.length > 0) {
+        const normalizedEvents = supabaseRows.map((row, idx) => normalizeSupabaseEvent(row, idx));
+
+        // Chronological sort
+        normalizedEvents.sort((a, b) => new Date(a.eventTime).getTime() - new Date(b.eventTime).getTime());
+
+        return res.status(200).json({
+          success: true,
+          status: 'ACTIVE',
+          isAvailable: true,
+          source: 'Supabase',
+          dateRange: { from: fromDate, to: toDate },
+          timestamp: new Date().toISOString(),
+          count: normalizedEvents.length,
+          events: normalizedEvents
+        });
+      }
+    } catch (supabaseErr) {
+      console.warn('[MarketEconomicCalendarRoute] Supabase fetch failed or empty, falling back to FMP:', supabaseErr.message);
+    }
+
+    // ── 2. Fallback: Fetch from FMP Economic Calendar Service ─────────
+    const fmpResult = await fmpEconomicCalendarService.getEconomicCalendar({
+      period,
+      from,
+      to,
+      country: resolvedCountry,
+      impact,
+      limit: parsedLimit,
+      forceRefresh
+    });
+
+    return res.status(200).json(fmpResult);
+
+  } catch (err) {
+    console.error('[MarketEconomicCalendarRoute] Error processing request:', err);
+    return res.status(500).json({
+      success: false,
+      status: 'SERVER_ERROR',
+      isAvailable: false,
+      source: 'Supabase / FMP',
+      error: 'Failed to retrieve economic calendar',
+      message: err.message,
+      events: []
+    });
+  }
+});
+
+import { globalEconomicCalendarService } from '../services/forex/GlobalEconomicCalendarService.js';
+
+/**
+ * GET /api/market/economic-calendar/global
+ * Unified multi-currency macroeconomic calendar endpoint (INR, USD, EUR, GBP, JPY, AUD, CAD, CHF, CNY)
+ * 
+ * Query Parameters:
+ *   ?currencies=INR,USD,EUR,GBP,JPY or ALL
+ *   ?countries=IN,US,EU,GB,JP or ALL
+ *   ?from=YYYY-MM-DD
+ *   ?to=YYYY-MM-DD
+ *   ?impact=high | medium | low | ALL
+ *   ?status=upcoming | released | ALL
+ *   ?search=CPI
+ *   ?userTimezone=Asia/Kolkata | UTC | America/New_York | etc.
+ *   ?page=1
+ *   ?limit=50
+ *   ?sortBy=date | impact | currency | country
+ *   ?sortDirection=asc | desc
+ */
+router.get('/global', async (req, res) => {
+  try {
+    const {
+      currencies,
+      currency,
+      countries,
+      country,
+      countryCode,
+      from,
+      to,
+      impact,
+      status,
+      search,
+      userTimezone,
+      page,
+      limit,
+      sortBy,
+      sortDirection
+    } = req.query;
+
+    const result = await globalEconomicCalendarService.getGlobalEvents({
+      currencies: currencies || currency,
+      countries: countries || country || countryCode,
+      from,
+      to,
+      impact,
+      status,
+      search,
+      userTimezone,
+      page,
+      limit,
+      sortBy,
+      sortDirection
+    });
+
+    return res.status(200).json(result);
+  } catch (err) {
+    console.error('[MarketEconomicCalendarRoute] Global events query error:', err);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve global economic calendar',
+      message: err.message,
+      events: []
+    });
+  }
+});
+
+export default router;
+

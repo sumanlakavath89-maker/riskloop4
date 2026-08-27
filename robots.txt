@@ -1,0 +1,24 @@
+# =============================================================================
+# RiskLoop Production Robots.txt Configuration
+# =============================================================================
+
+User-agent: *
+Allow: /
+Allow: /styles.css
+Allow: /script.js
+Allow: /instruments.js
+Allow: /logos/
+Allow: /data/
+
+# Disallow internal backend API endpoints & administrative routes
+Disallow: /api/
+Disallow: /admin/
+Disallow: /api/admin/
+Disallow: /api/dev/
+
+# Disallow isolated authentication return endpoints from indexing
+Disallow: /login.html
+Disallow: /register.html
+
+# Sitemap reference
+Sitemap: https://riskloop.io/sitemap.xml

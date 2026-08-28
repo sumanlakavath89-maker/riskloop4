@@ -1738,15 +1738,32 @@
       `;
     }).join('');
 
-    // Add View All Expander Card in Featured mode
+    // Add View All Expander Card
     html += `
-      <div class="broker-catalog-card bk-view-all-card" id="bkViewAllExpanderCard" onclick="window.setBrokerModalCat('all');" style="grid-column: 1 / -1; padding: 13px 18px; background: rgba(224,169,78,0.07); border: 1px dashed rgba(224,169,78,0.4); border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s ease;">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:var(--accent,#E0A94E);"><polyline points="6 9 12 15 18 9"/></svg>
-        <span style="font-size: 13px; font-weight: 700; color: var(--accent,#E0A94E);">View All 18+ Brokers &amp; Exchanges</span>
+      <div class="broker-catalog-card bk-view-all-card" id="bkViewAllExpanderCard" onclick="window.toggleViewAllBrokers();" style="grid-column: 1 / -1; padding: 13px 18px; background: rgba(224,169,78,0.07); border: 1px dashed rgba(224,169,78,0.4); border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s ease;">
+        <svg id="bkViewAllIcon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:var(--accent,#E0A94E);"><polyline points="6 9 12 15 18 9"/></svg>
+        <span id="bkViewAllText" style="font-size: 13px; font-weight: 700; color: var(--accent,#E0A94E);">View All 18+ Brokers &amp; Exchanges</span>
       </div>
     `;
 
     grid.innerHTML = html;
+    filterAllBrokersModal();
+  }
+
+  function toggleViewAllBrokers() {
+    if (_activeBrokerModalCat === 'featured') {
+      _activeBrokerModalCat = 'all';
+      const textEl = document.getElementById('bkViewAllText');
+      const iconEl = document.getElementById('bkViewAllIcon');
+      if (textEl) textEl.textContent = 'Show Less Brokers';
+      if (iconEl) iconEl.innerHTML = '<polyline points="18 15 12 9 6 15"/>';
+    } else {
+      _activeBrokerModalCat = 'featured';
+      const textEl = document.getElementById('bkViewAllText');
+      const iconEl = document.getElementById('bkViewAllIcon');
+      if (textEl) textEl.textContent = 'View All 18+ Brokers & Exchanges';
+      if (iconEl) iconEl.innerHTML = '<polyline points="6 9 12 15 18 9"/>';
+    }
     filterAllBrokersModal();
   }
 
@@ -1780,13 +1797,6 @@
       modal.style.display = 'flex';
       document.body.style.overflow = 'hidden';
       _activeBrokerModalCat = 'featured';
-      
-      // Reset tab active styling so none is forced-active in initial featured 6-broker view
-      document.querySelectorAll('.broker-modal-tab').forEach(b => {
-        b.style.background = 'rgba(255,255,255,0.05)';
-        b.style.color = 'var(--text)';
-        b.style.border = '1px solid rgba(255,255,255,0.1)';
-      });
 
       renderAllBrokersGrid();
       const searchInput = document.getElementById('allBrokersSearchInput');
@@ -1809,19 +1819,6 @@
 
   function setBrokerModalCat(cat, btnEl) {
     _activeBrokerModalCat = cat || 'all';
-    
-    document.querySelectorAll('.broker-modal-tab').forEach(b => {
-      if (b === btnEl || (cat && b.getAttribute('data-cat') === cat)) {
-        b.style.background = 'var(--accent)';
-        b.style.color = '#101322';
-        b.style.border = 'none';
-      } else {
-        b.style.background = 'rgba(255,255,255,0.05)';
-        b.style.color = 'var(--text)';
-        b.style.border = '1px solid rgba(255,255,255,0.1)';
-      }
-    });
-
     filterAllBrokersModal();
   }
 
@@ -1832,7 +1829,7 @@
 
     cards.forEach(c => {
       if (c === expander) {
-        if (_activeBrokerModalCat === 'featured' && !searchVal) {
+        if (!searchVal) {
           c.style.display = 'flex';
         } else {
           c.style.display = 'none';
@@ -1884,6 +1881,7 @@
 
   window.openAllBrokersModal = openAllBrokersModal;
   window.closeAllBrokersModal = closeAllBrokersModal;
+  window.toggleViewAllBrokers = toggleViewAllBrokers;
   window.setBrokerModalCat = setBrokerModalCat;
   window.filterAllBrokersModal = filterAllBrokersModal;
   window.renderAllBrokersGrid = renderAllBrokersGrid;

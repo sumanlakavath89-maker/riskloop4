@@ -1,10 +1,10 @@
-// Automated Test for Connect Broker Button & Supported Brokers & Exchanges Modal
+// Automated Test for Connect Broker Button & Clean Modal
 const fs = require('fs');
 const path = require('path');
 
-console.log('Testing Connect Broker Button & Supported Brokers Modal...');
+console.log('Testing Connect Broker Button & Clean Modal...');
 
-// 1. Verify files exist and include expected handlers
+// 1. Verify files exist and tabs row is removed
 const htmlCode = fs.readFileSync(path.join(__dirname, '../index.html'), 'utf8');
 const portfolioCode = fs.readFileSync(path.join(__dirname, '../portfolio.js'), 'utf8');
 const brokersCode = fs.readFileSync(path.join(__dirname, '../brokers.js'), 'utf8');
@@ -18,9 +18,10 @@ if (!htmlCode.includes('Supported Brokers & Exchanges')) {
 if (!htmlCode.includes('id="brokersTopConnectBtn"')) {
   throw new Error('FAIL: brokersTopConnectBtn not found in index.html');
 }
-if (!htmlCode.includes('data-cat="all"')) {
-  throw new Error('FAIL: View All tab not found in index.html');
+if (htmlCode.includes('class="broker-modal-tab"')) {
+  throw new Error('FAIL: Filter tabs row should be completely removed from index.html');
 }
+console.log('PASS: Filter tabs row successfully removed from index.html');
 
 // 2. Mock environment to test modal behavior
 const mockStorage = {};
@@ -102,14 +103,6 @@ global.document = {
       });
       return matches;
     }
-    if (selector === '.broker-modal-tab') {
-      return [
-        { getAttribute: () => 'all', style: {} },
-        { getAttribute: () => 'indian', style: {} },
-        { getAttribute: () => 'forex', style: {} },
-        { getAttribute: () => 'crypto', style: {} }
-      ];
-    }
     return [];
   },
   querySelector: (sel) => {
@@ -130,6 +123,9 @@ if (typeof window.openAllBrokersModal !== 'function') {
 }
 if (typeof window.closeAllBrokersModal !== 'function') {
   throw new Error('FAIL: window.closeAllBrokersModal is not defined');
+}
+if (typeof window.toggleViewAllBrokers !== 'function') {
+  throw new Error('FAIL: window.toggleViewAllBrokers is not defined');
 }
 
 // 3. Test opening the modal when NO broker is connected
@@ -157,9 +153,11 @@ if (!gridEl.innerHTML.includes('View All 18+ Brokers')) {
 }
 console.log('PASS: Featured 3 Indian + 3 Forex layout with View All expander verified!');
 
-// 4. Test View All tab click
-window.setBrokerModalCat('all');
-console.log('PASS: setBrokerModalCat("all") executed successfully');
+// 4. Test View All toggle
+window.toggleViewAllBrokers();
+console.log('PASS: toggleViewAllBrokers() executed successfully (expanded all)');
+window.toggleViewAllBrokers();
+console.log('PASS: toggleViewAllBrokers() executed successfully (collapsed back to top 6)');
 
 // 5. Test connecting a real broker
 localStorage.setItem('riskloop_connected_brokers', JSON.stringify([
@@ -182,4 +180,4 @@ if (modalEl.style.display !== 'none') {
 }
 console.log('PASS: Modal closed successfully');
 
-console.log('\nALL CONNECT BROKER MODAL TESTS PASSED! 🚀');
+console.log('\nALL TESTS PASSED! 🚀');

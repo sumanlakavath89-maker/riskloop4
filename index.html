@@ -12129,9 +12129,9 @@
           style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:var(--text);border-radius:10px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;">✕</button>
       </div>
 
-      <!-- Controls: Search & Category Pills -->
+      <!-- Controls: Search -->
       <div
-        style="padding:16px 26px 12px;background:rgba(255,255,255,0.02);border-bottom:1px solid rgba(255,255,255,0.06);display:flex;flex-direction:column;gap:12px;">
+        style="padding:16px 26px 14px;background:rgba(255,255,255,0.02);border-bottom:1px solid rgba(255,255,255,0.06);display:flex;flex-direction:column;gap:12px;">
         <div style="position:relative;">
           <input type="text" id="allBrokersSearchInput"
             placeholder="Search 25+ brokers (Angel One, Dhan, Upstox, MT5, Vantage...)"
@@ -12142,22 +12142,6 @@
             <circle cx="11" cy="11" r="8" />
             <path d="m21 21-4.3-4.3" />
           </svg>
-        </div>
-
-        <!-- Filter tabs -->
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <button type="button" class="broker-modal-tab" data-cat="all"
-            onclick="if(window.setBrokerModalCat)window.setBrokerModalCat('all',this);"
-            style="padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;background:rgba(255,255,255,0.05);color:var(--text);border:1px solid rgba(255,255,255,0.1);">View All</button>
-          <button type="button" class="broker-modal-tab" data-cat="indian"
-            onclick="if(window.setBrokerModalCat)window.setBrokerModalCat('indian',this);"
-            style="padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;background:rgba(255,255,255,0.05);color:var(--text);border:1px solid rgba(255,255,255,0.1);">🇮🇳 Indian Market (NSE/BSE)</button>
-          <button type="button" class="broker-modal-tab" data-cat="forex"
-            onclick="if(window.setBrokerModalCat)window.setBrokerModalCat('forex',this);"
-            style="padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;background:rgba(255,255,255,0.05);color:var(--text);border:1px solid rgba(255,255,255,0.1);">💱 Forex &amp; CFDs</button>
-          <button type="button" class="broker-modal-tab" data-cat="crypto"
-            onclick="if(window.setBrokerModalCat)window.setBrokerModalCat('crypto',this);"
-            style="padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;background:rgba(255,255,255,0.05);color:var(--text);border:1px solid rgba(255,255,255,0.1);">🪙 Crypto Exchanges</button>
         </div>
       </div>
 

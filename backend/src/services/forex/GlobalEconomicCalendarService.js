@@ -16,6 +16,7 @@
 
 import { supabaseEconomicCalendarService } from '../SupabaseEconomicCalendarService.js';
 import { indiaCalendarScheduleService } from '../IndiaCalendarScheduleService.js';
+import { getCanonicalIndicatorKey, enrichEventsWithPreviousReleases } from '../../utils/economicReleaseEnricher.js';
 import { blsSourceAdapter } from './providers/BLSSourceAdapter.js';
 import { beaSourceAdapter } from './providers/BEASourceAdapter.js';
 import { federalReserveSourceAdapter } from './providers/FederalReserveSourceAdapter.js';
@@ -336,7 +337,7 @@ export class GlobalEconomicCalendarService {
       }
     }
 
-    // ── 2. Deduplicate Events ─────────────────────────────────────────
+    // ── 2. Deduplicate Events & Enrich with Previous Releases ────────
     const seen = new Set();
     const uniqueEvents = [];
     for (const ev of rawEvents) {
@@ -346,6 +347,9 @@ export class GlobalEconomicCalendarService {
         uniqueEvents.push(ev);
       }
     }
+
+    // Dynamically enrich all sovereign and global events with their latest official previous release
+    enrichEventsWithPreviousReleases(uniqueEvents);
 
     // ── 3. Apply Multi-Dimensional Filtering ──────────────────────────
     let filtered = uniqueEvents.filter(ev => {
@@ -385,8 +389,13 @@ export class GlobalEconomicCalendarService {
         userTimezone
       );
 
+      const hasActual = ev.actual !== null && ev.actual !== undefined && ev.actual !== '' && ev.actual !== '—';
+      const hasForecast = ev.forecast !== null && ev.forecast !== undefined && ev.forecast !== '' && ev.forecast !== '—';
+      const hasPrevious = ev.previous !== null && ev.previous !== undefined && ev.previous !== '' && ev.previous !== '—';
+
       return {
         id: ev.id,
+        canonicalId: ev.canonicalId || getCanonicalIndicatorKey(ev),
         event: ev.eventName,
         eventName: ev.eventName,
         currency: ev.currency,
@@ -394,7 +403,7 @@ export class GlobalEconomicCalendarService {
         countryCode: ev.countryCode,
         flag: ev.flag,
         impact: ev.impact,
-        status: ev.status,
+        status: hasActual ? 'released' : ev.status,
         date: tzConversion.userDate,
         scheduledDate: tzConversion.userDate,
         scheduledTime: tzConversion.userTime,
@@ -407,9 +416,12 @@ export class GlobalEconomicCalendarService {
         originalTime: ev.originalTime,
         originalTimezone: ev.originalTimezone,
         userTimezone: tzConversion.targetTimezone,
-        actual: ev.actual !== null && ev.actual !== undefined ? String(ev.actual) : '—',
-        forecast: ev.forecast !== null && ev.forecast !== undefined ? String(ev.forecast) : '—',
-        previous: ev.previous !== null && ev.previous !== undefined ? String(ev.previous) : '—',
+        actual: hasActual ? String(ev.actual) : '—',
+        forecast: hasForecast ? String(ev.forecast) : '—',
+        previous: hasPrevious ? String(ev.previous) : '—',
+        rawActual: hasActual ? ev.actual : null,
+        rawForecast: hasForecast ? ev.forecast : null,
+        rawPrevious: hasPrevious ? ev.previous : null,
         unit: ev.unit || '%',
         source: ev.source,
         sourceName: ev.sourceName || ev.source,
@@ -535,6 +547,7 @@ export class GlobalEconomicCalendarService {
 
     return {
       id: raw.id || `ev_${currency}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      canonicalId: getCanonicalIndicatorKey(raw),
       eventName: raw.event_name || raw.name || raw.indicator || 'Economic Release',
       currency,
       country: raw.country || meta.name,

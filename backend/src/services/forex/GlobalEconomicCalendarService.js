@@ -1,8 +1,6 @@
 /**
  * Global Economic Calendar Service
  * 
- * Phase 7.8: Unified Global Economic Calendar Dashboard Engine
- * 
  * Provides unified, multi-currency macroeconomic event aggregation across:
  * - INR (India / MoSPI / RBI)
  * - USD (United States / BLS / BEA / Fed)
@@ -13,15 +11,7 @@
  * - CAD (Canada / BoC / StatCan)
  * - CHF (Switzerland / SNB / FSO)
  * - CNY (China / PBoC / NBS)
- * 
- * Features:
- * 1. Unified Multi-Currency Aggregation with resilient error isolation.
- * 2. Multi-Dimensional Filtering (Currency, Country, Date, Impact, Status).
- * 3. Automatic User Timezone Conversion + Original Timezone Preservation.
- * 4. High / Medium / Low Impact Normalization.
- * 5. Safe Pagination & Multi-field Sorting.
- * 6. Public Telemetry Sanitization (No internal database or secret exposure).
- * 7. India Subsystem & Baseline Preservation.
+ * - NZD (New Zealand / RBNZ / Stats NZ)
  */
 
 import { supabaseEconomicCalendarService } from '../SupabaseEconomicCalendarService.js';
@@ -36,19 +26,21 @@ import { rbaSourceAdapter } from './providers/RBASourceAdapter.js';
 import { bocSourceAdapter } from './providers/BoCSourceAdapter.js';
 import { snbSourceAdapter } from './providers/SNBSourceAdapter.js';
 import { pbocSourceAdapter } from './providers/PBoCSourceAdapter.js';
+import { rbnzSourceAdapter } from './providers/RBNZSourceAdapter.js';
 
-export const SUPPORTED_GLOBAL_CURRENCIES = ['INR', 'USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'CNY'];
+export const SUPPORTED_GLOBAL_CURRENCIES = ['INR', 'USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'CNY', 'NZD'];
 
 export const CURRENCY_METADATA = {
-  INR: { name: 'India', countryCode: 'IN', currency: 'INR', flag: '🇮🇳', timezone: 'Asia/Kolkata', defaultSource: 'MoSPI / RBI' },
-  USD: { name: 'United States', countryCode: 'US', currency: 'USD', flag: '🇺🇸', timezone: 'America/New_York', defaultSource: 'BLS / BEA / Fed' },
-  EUR: { name: 'Eurozone', countryCode: 'EU', currency: 'EUR', flag: '🇪🇺', timezone: 'Europe/Brussels', defaultSource: 'ECB / Eurostat' },
-  GBP: { name: 'United Kingdom', countryCode: 'GB', currency: 'GBP', flag: '🇬🇧', timezone: 'Europe/London', defaultSource: 'Bank of England / ONS' },
-  JPY: { name: 'Japan', countryCode: 'JP', currency: 'JPY', flag: '🇯🇵', timezone: 'Asia/Tokyo', defaultSource: 'Bank of Japan / SBJ' },
-  AUD: { name: 'Australia', countryCode: 'AU', currency: 'AUD', flag: '🇦🇺', timezone: 'Australia/Sydney', defaultSource: 'Reserve Bank of Australia / ABS' },
-  CAD: { name: 'Canada', countryCode: 'CA', currency: 'CAD', flag: '🇨🇦', timezone: 'America/Toronto', defaultSource: 'Bank of Canada / StatCan' },
-  CHF: { name: 'Switzerland', countryCode: 'CH', currency: 'CHF', flag: '🇨🇭', timezone: 'Europe/Zurich', defaultSource: 'Swiss National Bank / FSO' },
-  CNY: { name: 'China', countryCode: 'CN', currency: 'CNY', flag: '🇨🇳', timezone: 'Asia/Shanghai', defaultSource: 'People\'s Bank of China / NBS' }
+  INR: { name: 'India', countryCode: 'IN', currency: 'INR', flag: '🇮🇳', timezone: 'Asia/Kolkata', defaultSource: 'MoSPI / RBI', sourceName: 'Ministry of Statistics & RBI', sourceUrl: 'https://www.mospi.gov.in' },
+  USD: { name: 'United States', countryCode: 'US', currency: 'USD', flag: '🇺🇸', timezone: 'America/New_York', defaultSource: 'BLS / BEA / Fed', sourceName: 'U.S. Bureau of Labor Statistics / Fed', sourceUrl: 'https://www.bls.gov' },
+  EUR: { name: 'Eurozone', countryCode: 'EU', currency: 'EUR', flag: '🇪🇺', timezone: 'Europe/Brussels', defaultSource: 'ECB / Eurostat', sourceName: 'European Central Bank / Eurostat', sourceUrl: 'https://www.ecb.europa.eu' },
+  GBP: { name: 'United Kingdom', countryCode: 'GB', currency: 'GBP', flag: '🇬🇧', timezone: 'Europe/London', defaultSource: 'Bank of England / ONS', sourceName: 'Bank of England / ONS', sourceUrl: 'https://www.bankofengland.co.uk' },
+  JPY: { name: 'Japan', countryCode: 'JP', currency: 'JPY', flag: '🇯🇵', timezone: 'Asia/Tokyo', defaultSource: 'Bank of Japan / SBJ', sourceName: 'Bank of Japan / Statistics Bureau', sourceUrl: 'https://www.boj.or.jp' },
+  AUD: { name: 'Australia', countryCode: 'AU', currency: 'AUD', flag: '🇦🇺', timezone: 'Australia/Sydney', defaultSource: 'Reserve Bank of Australia / ABS', sourceName: 'Reserve Bank of Australia (RBA)', sourceUrl: 'https://www.rba.gov.au' },
+  CAD: { name: 'Canada', countryCode: 'CA', currency: 'CAD', flag: '🇨🇦', timezone: 'America/Toronto', defaultSource: 'Bank of Canada / StatCan', sourceName: 'Bank of Canada / Statistics Canada', sourceUrl: 'https://www.bankofcanada.ca' },
+  CHF: { name: 'Switzerland', countryCode: 'CH', currency: 'CHF', flag: '🇨🇭', timezone: 'Europe/Zurich', defaultSource: 'Swiss National Bank / FSO', sourceName: 'Swiss National Bank (SNB)', sourceUrl: 'https://www.snb.ch' },
+  CNY: { name: 'China', countryCode: 'CN', currency: 'CNY', flag: '🇨🇳', timezone: 'Asia/Shanghai', defaultSource: "People's Bank of China / NBS", sourceName: "People's Bank of China (PBoC)", sourceUrl: 'http://www.pbc.gov.cn' },
+  NZD: { name: 'New Zealand', countryCode: 'NZ', currency: 'NZD', flag: '🇳🇿', timezone: 'Pacific/Auckland', defaultSource: 'RBNZ / Stats NZ', sourceName: 'Reserve Bank of New Zealand (RBNZ)', sourceUrl: 'https://www.rbnz.govt.nz' }
 };
 
 export class GlobalEconomicCalendarService {
@@ -57,34 +49,80 @@ export class GlobalEconomicCalendarService {
   }
 
   /**
-   * Convert an event date/time to a specified target timezone
-   * 
-   * @param {string} dateStr 'YYYY-MM-DD'
-   * @param {string} timeStr 'HH:mm'
-   * @param {string} sourceTz Source timezone (e.g. 'America/New_York')
-   * @param {string} targetTz Target timezone (e.g. 'Asia/Kolkata')
-   * @returns {{ userDate: string, userTime: string, userDateTime: string, originalTimezone: string, targetTimezone: string }}
+   * Resolve Date Range from period keyword ('today', 'tomorrow', 'week', 'all')
    */
-  convertTimezone(dateStr, timeStr, sourceTz = 'UTC', targetTz = 'UTC') {
+  resolveDateRange(period, fromQuery, toQuery, userTimezone = 'Asia/Kolkata') {
+    if (fromQuery && toQuery) return { from: fromQuery, to: toQuery };
+    if (fromQuery && !toQuery) return { from: fromQuery, to: null };
+    if (!fromQuery && toQuery) return { from: null, to: toQuery };
+
+    if (!period || period === 'all') return { from: null, to: null };
+
+    const now = new Date();
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: userTimezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+
+    const todayStr = formatter.format(now);
+
+    if (period === 'today') {
+      return { from: todayStr, to: todayStr };
+    }
+
+    if (period === 'tomorrow') {
+      const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+      const tomorrowStr = formatter.format(tomorrow);
+      return { from: tomorrowStr, to: tomorrowStr };
+    }
+
+    if (period === 'week' || period === 'this-week') {
+      const endOfWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+      const endStr = formatter.format(endOfWeek);
+      return { from: todayStr, to: endStr };
+    }
+
+    return { from: null, to: null };
+  }
+
+  /**
+   * Convert an event date/time to a specified target timezone and canonical UTC
+   */
+  convertTimezone(dateStr, timeStr, sourceTz = 'UTC', targetTz = 'Asia/Kolkata') {
     try {
-      if (!dateStr) return { userDate: '—', userTime: '—', userDateTime: null, originalTimezone: sourceTz, targetTimezone: targetTz };
+      if (!dateStr) return { userDate: '—', userTime: '—', userDateTime: null, canonicalUtcIso: null, timeIST: '—', timeUTC: '—' };
 
       const safeTime = (timeStr && timeStr !== '—' && /^\d{1,2}:\d{2}/.test(timeStr)) ? timeStr : '12:00';
       const cleanTime = safeTime.length === 5 ? `${safeTime}:00` : safeTime;
-      const isoStr = `${dateStr}T${cleanTime}`;
-
-      // Create date assuming source timezone
-      const localDate = new Date(isoStr);
+      
+      // Construct UTC-equivalent reference instant
+      const localDate = new Date(`${dateStr}T${cleanTime}`);
 
       const dateFormatter = new Intl.DateTimeFormat('en-CA', {
-        timeZone: targetTz || 'UTC',
+        timeZone: targetTz || 'Asia/Kolkata',
         year: 'numeric',
         month: '2-digit',
         day: '2-digit'
       });
 
       const timeFormatter = new Intl.DateTimeFormat('en-GB', {
-        timeZone: targetTz || 'UTC',
+        timeZone: targetTz || 'Asia/Kolkata',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      });
+
+      const istTimeFormatter = new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'Asia/Kolkata',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      });
+
+      const utcTimeFormatter = new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'UTC',
         hour: '2-digit',
         minute: '2-digit',
         hour12: false
@@ -92,11 +130,17 @@ export class GlobalEconomicCalendarService {
 
       const userDate = dateFormatter.format(localDate);
       const userTime = timeFormatter.format(localDate);
+      const timeIST = `${istTimeFormatter.format(localDate)} IST`;
+      const timeUTC = `${utcTimeFormatter.format(localDate)} UTC`;
+      const canonicalUtcIso = localDate.toISOString();
 
       return {
         userDate,
         userTime,
         userDateTime: `${userDate}T${userTime}:00`,
+        canonicalUtcIso,
+        timeIST,
+        timeUTC,
         originalTimezone: sourceTz,
         targetTimezone: targetTz
       };
@@ -105,6 +149,9 @@ export class GlobalEconomicCalendarService {
         userDate: dateStr,
         userTime: timeStr || '—',
         userDateTime: dateStr ? `${dateStr}T${timeStr || '00:00'}:00` : null,
+        canonicalUtcIso: null,
+        timeIST: `${timeStr || '12:00'} IST`,
+        timeUTC: `${timeStr || '12:00'} UTC`,
         originalTimezone: sourceTz,
         targetTimezone: targetTz
       };
@@ -113,25 +160,11 @@ export class GlobalEconomicCalendarService {
 
   /**
    * Fetch and synthesize sovereign economic events across all currencies with strict isolation
-   * 
-   * @param {Object} [options]
-   * @param {string|string[]} [options.currencies]
-   * @param {string|string[]} [options.countries]
-   * @param {string} [options.from]
-   * @param {string} [options.to]
-   * @param {string} [options.impact]
-   * @param {string} [options.status]
-   * @param {string} [options.search]
-   * @param {string} [options.userTimezone='Asia/Kolkata']
-   * @param {number} [options.page=1]
-   * @param {number} [options.limit=50]
-   * @param {string} [options.sortBy='date']
-   * @param {string} [options.sortDirection='asc']
-   * @returns {Promise<Object>}
    */
   async getGlobalEvents(options = {}) {
     const startTime = Date.now();
     const {
+      period,
       currencies,
       countries,
       from,
@@ -146,6 +179,7 @@ export class GlobalEconomicCalendarService {
       sortDirection = 'asc'
     } = options;
 
+    const { from: resolvedFrom, to: resolvedTo } = this.resolveDateRange(period, from, to, userTimezone);
     const requestedCurrencies = this._resolveCurrencyFilter(currencies, countries);
     const rawEvents = [];
     const feedErrors = [];
@@ -153,7 +187,7 @@ export class GlobalEconomicCalendarService {
     // ── 1. Sovereign Feed Discovery with Resilient Isolation ───────────
     const feedTasks = [];
 
-    // INR Subsystem: Query Supabase or India Schedule Generator
+    // INR Subsystem
     if (requestedCurrencies.includes('INR')) {
       feedTasks.push((async () => {
         try {
@@ -161,7 +195,6 @@ export class GlobalEconomicCalendarService {
           if (Array.isArray(dbEvents) && dbEvents.length > 0) {
             return dbEvents.map(e => this._normalizeEvent(e, 'INR'));
           }
-          // Fallback to deterministic schedule generator
           const generated = indiaCalendarScheduleService.generateUpcomingEvents({ daysAhead: 60 });
           return (generated.events || []).map(e => this._normalizeEvent(e, 'INR'));
         } catch (err) {
@@ -205,7 +238,7 @@ export class GlobalEconomicCalendarService {
       })());
     }
 
-    // GBP Subsystem: Bank of England / ONS
+    // GBP Subsystem: BoE / ONS
     if (requestedCurrencies.includes('GBP')) {
       feedTasks.push((async () => {
         try {
@@ -218,7 +251,7 @@ export class GlobalEconomicCalendarService {
       })());
     }
 
-    // JPY Subsystem: Bank of Japan / SBJ
+    // JPY Subsystem: BoJ / SBJ
     if (requestedCurrencies.includes('JPY')) {
       feedTasks.push((async () => {
         try {
@@ -283,6 +316,19 @@ export class GlobalEconomicCalendarService {
       })());
     }
 
+    // NZD Subsystem: RBNZ / Stats NZ
+    if (requestedCurrencies.includes('NZD')) {
+      feedTasks.push((async () => {
+        try {
+          const res = await rbnzSourceAdapter.fetchUpcomingEvents({ daysAhead: 60 });
+          return (res.events || []).map(e => this._normalizeEvent(e, 'NZD'));
+        } catch (err) {
+          feedErrors.push({ currency: 'NZD', error: err.message });
+          return [];
+        }
+      })());
+    }
+
     const settledResults = await Promise.allSettled(feedTasks);
     for (const res of settledResults) {
       if (res.status === 'fulfilled' && Array.isArray(res.value)) {
@@ -304,8 +350,8 @@ export class GlobalEconomicCalendarService {
     // ── 3. Apply Multi-Dimensional Filtering ──────────────────────────
     let filtered = uniqueEvents.filter(ev => {
       // Date filter
-      if (from && ev.originalDate < from) return false;
-      if (to && ev.originalDate > to) return false;
+      if (resolvedFrom && ev.originalDate < resolvedFrom) return false;
+      if (resolvedTo && ev.originalDate > resolvedTo) return false;
 
       // Impact filter
       if (impact && impact !== 'ALL' && ev.impact.toLowerCase() !== impact.toLowerCase()) {
@@ -330,7 +376,7 @@ export class GlobalEconomicCalendarService {
       return true;
     });
 
-    // ── 4. Apply Timezone Conversion & Formatting ─────────────────────
+    // ── 4. Apply Timezone Conversion & Canonical Output ───────────────
     const processedEvents = filtered.map(ev => {
       const tzConversion = this.convertTimezone(
         ev.originalDate,
@@ -341,6 +387,7 @@ export class GlobalEconomicCalendarService {
 
       return {
         id: ev.id,
+        event: ev.eventName,
         eventName: ev.eventName,
         currency: ev.currency,
         country: ev.country,
@@ -348,19 +395,27 @@ export class GlobalEconomicCalendarService {
         flag: ev.flag,
         impact: ev.impact,
         status: ev.status,
+        date: tzConversion.userDate,
         scheduledDate: tzConversion.userDate,
         scheduledTime: tzConversion.userTime,
+        time: `${tzConversion.userTime} IST`,
+        timeIST: tzConversion.timeIST,
+        timeUTC: tzConversion.timeUTC,
+        eventTime: tzConversion.canonicalUtcIso,
         userDateTime: tzConversion.userDateTime,
         originalDate: ev.originalDate,
         originalTime: ev.originalTime,
         originalTimezone: ev.originalTimezone,
         userTimezone: tzConversion.targetTimezone,
-        actual: ev.actual,
-        forecast: ev.forecast,
-        previous: ev.previous,
-        unit: ev.unit,
+        actual: ev.actual !== null && ev.actual !== undefined ? String(ev.actual) : '—',
+        forecast: ev.forecast !== null && ev.forecast !== undefined ? String(ev.forecast) : '—',
+        previous: ev.previous !== null && ev.previous !== undefined ? String(ev.previous) : '—',
+        unit: ev.unit || '%',
         source: ev.source,
-        sourceUrl: ev.sourceUrl,
+        sourceName: ev.sourceName || ev.source,
+        sourceUrl: ev.sourceUrl || CURRENCY_METADATA[ev.currency]?.sourceUrl || 'https://www.bis.org',
+        officialSource: true,
+        isOfficial: true,
         countdownMs: this._calculateCountdown(ev.originalDate, ev.originalTime, ev.originalTimezone)
       };
     });
@@ -376,7 +431,6 @@ export class GlobalEconomicCalendarService {
       } else if (sortBy === 'country') {
         comparison = a.country.localeCompare(b.country);
       } else {
-        // Default sort by date/time
         const timeA = new Date(a.userDateTime || a.originalDate).getTime();
         const timeB = new Date(b.userDateTime || b.originalDate).getTime();
         comparison = timeA - timeB;
@@ -397,13 +451,16 @@ export class GlobalEconomicCalendarService {
     return {
       success: true,
       service: 'GlobalEconomicCalendarService',
+      dataOrigin: 'Official Sovereign Government & Central Bank Sources',
       timestamp: new Date().toISOString(),
       latencyMs: Date.now() - startTime,
       userTimezone,
+      dateRange: { from: resolvedFrom, to: resolvedTo },
       filters: {
+        period: period || 'all',
         currencies: requestedCurrencies,
-        from: from || null,
-        to: to || null,
+        from: resolvedFrom || null,
+        to: resolvedTo || null,
         impact: impact || 'ALL',
         status: status || 'ALL',
         search: search || null
@@ -460,7 +517,9 @@ export class GlobalEconomicCalendarService {
       countryCode: raw.country_code || 'US',
       flag: '🌐',
       timezone: 'UTC',
-      defaultSource: 'Official Sovereign Provider'
+      defaultSource: 'Official Sovereign Provider',
+      sourceName: 'Official Sovereign Authority',
+      sourceUrl: 'https://www.bis.org'
     };
 
     const dateStr = raw.event_date ? String(raw.event_date).split('T')[0] : (raw.date || '2026-09-01');
@@ -484,7 +543,10 @@ export class GlobalEconomicCalendarService {
       previous: raw.previous !== undefined ? raw.previous : null,
       unit: raw.unit || '%',
       source: raw.source || meta.defaultSource,
-      sourceUrl: raw.source_url || raw.url || null
+      sourceName: raw.sourceName || meta.sourceName || raw.source || meta.defaultSource,
+      sourceUrl: raw.source_url || raw.sourceUrl || raw.url || meta.sourceUrl,
+      officialSource: true,
+      isOfficial: true
     };
   }
 

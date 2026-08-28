@@ -222,6 +222,7 @@ import { globalEconomicCalendarService } from '../services/forex/GlobalEconomicC
 router.get('/global', async (req, res) => {
   try {
     const {
+      period,
       currencies,
       currency,
       countries,
@@ -240,6 +241,7 @@ router.get('/global', async (req, res) => {
     } = req.query;
 
     const result = await globalEconomicCalendarService.getGlobalEvents({
+      period,
       currencies: currencies || currency,
       countries: countries || country || countryCode,
       from,

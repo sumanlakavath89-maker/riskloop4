@@ -8,378 +8,9 @@
   'use strict';
 
   /* ============================================================
-     FOREX ECONOMIC CALENDAR DATA
-     Major Currencies: USD, EUR, GBP, JPY, AUD, CAD, CHF, NZD
+     FOREX ECONOMIC CALENDAR — OFFICIAL SOVEREIGN SOURCES
+     Major Currencies: USD, EUR, GBP, JPY, AUD, CAD, CHF, CNY, NZD, INR
      ============================================================ */
-
-  const FOREX_ECONOMIC_EVENTS = {
-    today: [
-      {
-        date: 'Today',
-        timeUTC: '12:30',
-        timeIST: '18:00',
-        event: 'Core Retail Sales (MoM)',
-        country: 'US',
-        currency: 'USD',
-        impact: 'high',
-        previous: '0.4%',
-        forecast: '0.3%',
-        actual: '0.5%'
-      },
-      {
-        date: 'Today',
-        timeUTC: '12:30',
-        timeIST: '18:00',
-        event: 'Retail Sales (MoM)',
-        country: 'US',
-        currency: 'USD',
-        impact: 'high',
-        previous: '0.1%',
-        forecast: '0.4%',
-        actual: '0.4%'
-      },
-      {
-        date: 'Today',
-        timeUTC: '08:00',
-        timeIST: '13:30',
-        event: 'Claimant Count Change',
-        country: 'GB',
-        currency: 'GBP',
-        impact: 'high',
-        previous: '32.3K',
-        forecast: '20.0K',
-        actual: '14.5K'
-      },
-      {
-        date: 'Today',
-        timeUTC: '09:00',
-        timeIST: '14:30',
-        event: 'ZEW Economic Sentiment',
-        country: 'EU',
-        currency: 'EUR',
-        impact: 'medium',
-        previous: '43.7',
-        forecast: '35.4',
-        actual: '31.8'
-      },
-      {
-        date: 'Today',
-        timeUTC: '01:30',
-        timeIST: '07:00',
-        event: 'Wage Price Index (QoQ)',
-        country: 'AU',
-        currency: 'AUD',
-        impact: 'high',
-        previous: '0.8%',
-        forecast: '0.9%',
-        actual: '0.8%'
-      },
-      {
-        date: 'Today',
-        timeUTC: '23:50',
-        timeIST: '05:20',
-        event: 'Producer Price Index (YoY)',
-        country: 'JP',
-        currency: 'JPY',
-        impact: 'medium',
-        previous: '2.9%',
-        forecast: '3.0%',
-        actual: '3.0%'
-      },
-      {
-        date: 'Today',
-        timeUTC: '12:15',
-        timeIST: '17:45',
-        event: 'Housing Starts',
-        country: 'CA',
-        currency: 'CAD',
-        impact: 'medium',
-        previous: '241K',
-        forecast: '245K',
-        actual: '252K'
-      },
-      {
-        date: 'Today',
-        timeUTC: '18:00',
-        timeIST: '23:30',
-        event: 'FOMC Member Speech',
-        country: 'US',
-        currency: 'USD',
-        impact: 'medium',
-        previous: '—',
-        forecast: '—',
-        actual: '—'
-      }
-    ],
-    tomorrow: [
-      {
-        date: 'Tomorrow',
-        timeUTC: '01:30',
-        timeIST: '07:00',
-        event: 'Employment Change',
-        country: 'AU',
-        currency: 'AUD',
-        impact: 'high',
-        previous: '50.2K',
-        forecast: '20.0K',
-        actual: '—'
-      },
-      {
-        date: 'Tomorrow',
-        timeUTC: '01:30',
-        timeIST: '07:00',
-        event: 'Unemployment Rate',
-        country: 'AU',
-        currency: 'AUD',
-        impact: 'high',
-        previous: '4.1%',
-        forecast: '4.1%',
-        actual: '—'
-      },
-      {
-        date: 'Tomorrow',
-        timeUTC: '12:30',
-        timeIST: '18:00',
-        event: 'Philly Fed Manufacturing Index',
-        country: 'US',
-        currency: 'USD',
-        impact: 'high',
-        previous: '13.9',
-        forecast: '5.2',
-        actual: '—'
-      },
-      {
-        date: 'Tomorrow',
-        timeUTC: '12:30',
-        timeIST: '18:00',
-        event: 'Initial Jobless Claims',
-        country: 'US',
-        currency: 'USD',
-        impact: 'high',
-        previous: '233K',
-        forecast: '235K',
-        actual: '—'
-      },
-      {
-        date: 'Tomorrow',
-        timeUTC: '12:30',
-        timeIST: '18:00',
-        event: 'Core CPI (MoM)',
-        country: 'CA',
-        currency: 'CAD',
-        impact: 'high',
-        previous: '-0.1%',
-        forecast: '0.2%',
-        actual: '—'
-      },
-      {
-        date: 'Tomorrow',
-        timeUTC: '06:30',
-        timeIST: '12:00',
-        event: 'Producer & Import Prices (MoM)',
-        country: 'CH',
-        currency: 'CHF',
-        impact: 'low',
-        previous: '0.0%',
-        forecast: '0.1%',
-        actual: '—'
-      },
-      {
-        date: 'Tomorrow',
-        timeUTC: '21:45',
-        timeIST: '03:15',
-        event: 'Producer Price Index Input (QoQ)',
-        country: 'NZ',
-        currency: 'NZD',
-        impact: 'medium',
-        previous: '0.7%',
-        forecast: '0.9%',
-        actual: '—'
-      },
-      {
-        date: 'Tomorrow',
-        timeUTC: '09:00',
-        timeIST: '14:30',
-        event: 'Trade Balance',
-        country: 'EU',
-        currency: 'EUR',
-        impact: 'low',
-        previous: '13.9B',
-        forecast: '15.2B',
-        actual: '—'
-      }
-    ],
-    week: [
-      {
-        date: 'Aug 17',
-        timeUTC: '12:30',
-        timeIST: '18:00',
-        event: 'Core Retail Sales (MoM)',
-        country: 'US',
-        currency: 'USD',
-        impact: 'high',
-        previous: '0.4%',
-        forecast: '0.3%',
-        actual: '0.5%'
-      },
-      {
-        date: 'Aug 17',
-        timeUTC: '08:00',
-        timeIST: '13:30',
-        event: 'Claimant Count Change',
-        country: 'GB',
-        currency: 'GBP',
-        impact: 'high',
-        previous: '32.3K',
-        forecast: '20.0K',
-        actual: '14.5K'
-      },
-      {
-        date: 'Aug 18',
-        timeUTC: '01:30',
-        timeIST: '07:00',
-        event: 'Employment Change',
-        country: 'AU',
-        currency: 'AUD',
-        impact: 'high',
-        previous: '50.2K',
-        forecast: '20.0K',
-        actual: '—'
-      },
-      {
-        date: 'Aug 18',
-        timeUTC: '12:30',
-        timeIST: '18:00',
-        event: 'Initial Jobless Claims',
-        country: 'US',
-        currency: 'USD',
-        impact: 'high',
-        previous: '233K',
-        forecast: '235K',
-        actual: '—'
-      },
-      {
-        date: 'Aug 19',
-        timeUTC: '06:00',
-        timeIST: '11:30',
-        event: 'Retail Sales (MoM)',
-        country: 'GB',
-        currency: 'GBP',
-        impact: 'high',
-        previous: '-1.2%',
-        forecast: '0.5%',
-        actual: '—'
-      },
-      {
-        date: 'Aug 19',
-        timeUTC: '09:00',
-        timeIST: '14:30',
-        event: 'CPI (YoY) Final',
-        country: 'EU',
-        currency: 'EUR',
-        impact: 'high',
-        previous: '2.5%',
-        forecast: '2.6%',
-        actual: '—'
-      },
-      {
-        date: 'Aug 20',
-        timeUTC: '23:30',
-        timeIST: '05:00',
-        event: 'National Core CPI (YoY)',
-        country: 'JP',
-        currency: 'JPY',
-        impact: 'high',
-        previous: '2.6%',
-        forecast: '2.7%',
-        actual: '—'
-      },
-      {
-        date: 'Aug 20',
-        timeUTC: '12:30',
-        timeIST: '18:00',
-        event: 'Non-Farm Payrolls (NFP)',
-        country: 'US',
-        currency: 'USD',
-        impact: 'high',
-        previous: '206K',
-        forecast: '175K',
-        actual: '—'
-      },
-      {
-        date: 'Aug 20',
-        timeUTC: '12:30',
-        timeIST: '18:00',
-        event: 'Unemployment Rate',
-        country: 'US',
-        currency: 'USD',
-        impact: 'high',
-        previous: '4.1%',
-        forecast: '4.1%',
-        actual: '—'
-      },
-      {
-        date: 'Aug 20',
-        timeUTC: '14:00',
-        timeIST: '19:30',
-        event: 'Prelim UoM Consumer Sentiment',
-        country: 'US',
-        currency: 'USD',
-        impact: 'high',
-        previous: '66.4',
-        forecast: '66.9',
-        actual: '—'
-      },
-      {
-        date: 'Aug 21',
-        timeUTC: '02:00',
-        timeIST: '07:30',
-        event: 'RBNZ Official Cash Rate Decision',
-        country: 'NZ',
-        currency: 'NZD',
-        impact: 'high',
-        previous: '5.50%',
-        forecast: '5.25%',
-        actual: '—'
-      },
-      {
-        date: 'Aug 21',
-        timeUTC: '12:30',
-        timeIST: '18:00',
-        event: 'Retail Sales (MoM)',
-        country: 'CA',
-        currency: 'CAD',
-        impact: 'high',
-        previous: '-1.8%',
-        forecast: '0.3%',
-        actual: '—'
-      },
-      {
-        date: 'Aug 21',
-        timeUTC: '08:30',
-        timeIST: '14:00',
-        event: 'SNB Chairman Speech',
-        country: 'CH',
-        currency: 'CHF',
-        impact: 'high',
-        previous: '—',
-        forecast: '—',
-        actual: '—'
-      },
-      {
-        date: 'Aug 21',
-        timeUTC: '01:15',
-        timeIST: '06:45',
-        event: 'PBoC 1-Year Loan Prime Rate (LPR)',
-        country: 'CN',
-        currency: 'CNY',
-        impact: 'high',
-        previous: '3.35%',
-        forecast: '3.35%',
-        actual: '—'
-      }
-    ]
-  };
 
   const CURRENCY_FLAGS = {
     INR: '🇮🇳',
@@ -393,6 +24,17 @@
     CNY: '🇨🇳',
     NZD: '🇳🇿'
   };
+
+  let currentForexPeriod = 'today';
+  let currentCurrencyFilter = 'ALL';
+  let forexTimezoneMode = 'IST'; // 'IST' or 'UTC'
+  let liveForexCalendarState = {
+    events: [],
+    status: 'IDLE',
+    message: '',
+    isAvailable: false
+  };
+  let isForexCalendarLoading = false;
 
   /* ============================================================
      FOREX SESSIONS CONFIGURATION
@@ -621,8 +263,45 @@
   }
 
   /* ============================================================
-     FOREX ECONOMIC CALENDAR COMPONENT
+     FOREX ECONOMIC CALENDAR COMPONENT — LIVE OFFICIAL SOURCES
      ============================================================ */
+
+  async function fetchLiveForexCalendar(period = 'today', currency = 'ALL', forceRefresh = false) {
+    const backendBase = (typeof window !== 'undefined' && window.API_BASE_URL) || '';
+    try {
+      const params = new URLSearchParams();
+      if (period && period !== 'all') params.set('period', period);
+      else if (period === 'all') params.set('period', 'all');
+      if (currency && currency !== 'ALL') params.set('currencies', currency);
+      if (forceRefresh) params.set('refresh', 'true');
+
+      const url = `${backendBase}/api/market/economic-calendar/global?${params.toString()}`;
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        return data;
+      }
+      const errJson = await response.json().catch(() => null);
+      return {
+        success: false,
+        status: errJson?.status || 'HTTP_ERROR',
+        message: errJson?.message || `HTTP ${response.status}: Failed to load live Forex calendar`,
+        events: []
+      };
+    } catch (err) {
+      console.warn('[ForexMarket] Failed to fetch global economic calendar from backend:', err.message);
+      return {
+        success: false,
+        status: 'NETWORK_ERROR',
+        message: 'Could not connect to RiskLoop global economic calendar service.',
+        events: []
+      };
+    }
+  }
 
   function initForexEconomicCalendar() {
     const periodButtons = document.querySelectorAll('#forexCalendarPeriodTabs .calendar-tab');
@@ -640,7 +319,7 @@
         btn.classList.add('calendar-tab-active');
 
         currentForexPeriod = period;
-        renderForexCalendar();
+        loadForexCalendarData(currentForexPeriod, currentCurrencyFilter);
       });
     });
 
@@ -654,7 +333,7 @@
         btn.classList.add('forex-curr-btn-active');
 
         currentCurrencyFilter = curr;
-        renderForexCalendar();
+        loadForexCalendarData(currentForexPeriod, currentCurrencyFilter);
       });
     });
 
@@ -673,42 +352,98 @@
 
     if (viewAllBtn) {
       viewAllBtn.addEventListener('click', () => {
-        // Switch to 'week' filter
-        const weekTab = document.querySelector('#forexCalendarPeriodTabs [data-period="week"]');
-        if (weekTab) weekTab.click();
+        currentForexPeriod = 'all';
+        periodButtons.forEach(b => b.classList.remove('calendar-tab-active'));
+        loadForexCalendarData('all', currentCurrencyFilter);
       });
     }
 
-    renderForexCalendar();
+    // Initial load from backend
+    loadForexCalendarData(currentForexPeriod, currentCurrencyFilter);
   }
 
-  function renderForexCalendar() {
+  async function loadForexCalendarData(period = currentForexPeriod, currency = currentCurrencyFilter, forceRefresh = false) {
     const tableBody = document.getElementById('forexCalendarTableBody');
     const navDate = document.getElementById('forexCalendarNavDate');
     if (!tableBody) return;
 
-    // Update Date Header
     if (navDate) {
       const titles = {
         today: 'Today',
         tomorrow: 'Tomorrow',
-        week: 'This Week'
+        week: 'This Week',
+        all: 'All Sovereign Releases'
       };
-      navDate.textContent = titles[currentForexPeriod] || 'Today';
+      navDate.textContent = titles[period] || 'Official Releases';
     }
 
-    let events = FOREX_ECONOMIC_EVENTS[currentForexPeriod] || [];
+    if (isForexCalendarLoading) return;
+    isForexCalendarLoading = true;
 
-    // Filter by currency
-    if (currentCurrencyFilter !== 'ALL') {
-      events = events.filter(e => e.currency === currentCurrencyFilter);
+    // Loading State
+    tableBody.innerHTML = `
+      <tr>
+        <td colspan="8" class="calendar-loading" style="padding: 32px 20px; text-align: center;">
+          <div class="loading-spinner" style="margin: 0 auto 10px;"></div>
+          <span>Loading official sovereign macroeconomic releases...</span>
+        </td>
+      </tr>
+    `;
+
+    try {
+      const response = await fetchLiveForexCalendar(period, currency, forceRefresh);
+      liveForexCalendarState = response;
+      renderForexCalendar();
+    } catch (err) {
+      console.error('[ForexMarket] Error loading forex calendar:', err);
+      liveForexCalendarState = {
+        success: false,
+        status: 'CLIENT_ERROR',
+        message: 'Unable to display official forex calendar events.',
+        events: []
+      };
+      renderForexCalendar();
+    } finally {
+      isForexCalendarLoading = false;
     }
+  }
 
-    if (events.length === 0) {
+  function renderForexCalendar() {
+    const tableBody = document.getElementById('forexCalendarTableBody');
+    if (!tableBody) return;
+
+    const events = Array.isArray(liveForexCalendarState?.events) ? liveForexCalendarState.events : [];
+    const message = liveForexCalendarState?.message || '';
+
+    // Error State
+    if (!liveForexCalendarState?.success && events.length === 0) {
       tableBody.innerHTML = `
         <tr>
-          <td colspan="8" style="text-align:center; padding:32px; color:var(--text-muted);">
-            No economic events found for ${currentCurrencyFilter} during this period.
+          <td colspan="8" class="calendar-loading" style="padding: 34px 20px; text-align: center;">
+            <div style="color: var(--text); font-size: 14px; font-weight: 600; margin-bottom: 6px;">Official Forex Calendar Notice</div>
+            <div style="margin: 0 auto 14px; font-size: 12px; color: var(--text-muted); max-width: 520px; line-height: 1.4;">${message || 'Official global economic data is currently refreshing.'}</div>
+            <button class="jbtn-ghost jbtn-sm" id="retryForexCalendarBtn" style="margin: 0 auto; padding: 4px 14px; font-size: 12px; cursor: pointer;">
+              Refresh Data
+            </button>
+          </td>
+        </tr>
+      `;
+
+      const retryBtn = document.getElementById('retryForexCalendarBtn');
+      if (retryBtn) {
+        retryBtn.addEventListener('click', () => loadForexCalendarData(currentForexPeriod, currentCurrencyFilter, true));
+      }
+      return;
+    }
+
+    // Empty State
+    if (events.length === 0) {
+      const targetLabel = currentCurrencyFilter === 'ALL' ? 'selected major currencies' : currentCurrencyFilter;
+      tableBody.innerHTML = `
+        <tr>
+          <td colspan="8" class="calendar-loading" style="padding: 32px 20px; text-align: center;">
+            <div style="color: var(--text); font-size: 13px; font-weight: 600;">No Official Releases Scheduled</div>
+            <div style="margin-top: 6px; font-size: 11px; color: var(--text-muted);">No official sovereign announcements scheduled for ${targetLabel} in this timeframe.</div>
           </td>
         </tr>
       `;
@@ -716,27 +451,37 @@
     }
 
     tableBody.innerHTML = events.map(evt => {
-      const flag = CURRENCY_FLAGS[evt.currency] || '🌐';
-      const timeStr = forexTimezoneMode === 'UTC' ? `${evt.timeUTC} UTC` : `${evt.timeIST} IST`;
-      const impactClass = `impact-${evt.impact}`;
+      const flag = CURRENCY_FLAGS[evt.currency] || evt.flag || '🌐';
+      const timeStr = forexTimezoneMode === 'UTC' ? (evt.timeUTC || '12:30 UTC') : (evt.timeIST || evt.time || '18:00 IST');
+      const impactClass = `impact-${(evt.impact || 'medium').toLowerCase()}`;
+      const impactLabel = (evt.impact || 'medium').toUpperCase();
 
-      let actualVal = evt.actual || '—';
+      let actualVal = (evt.actual !== null && evt.actual !== undefined && evt.actual !== '') ? String(evt.actual) : '—';
       let actualStyle = '';
       if (actualVal !== '—') {
         actualStyle = 'color: var(--accent); font-weight:700;';
       }
 
+      const sourceName = evt.sourceName || evt.source || 'Official Source';
+      const sourceUrl = evt.sourceUrl || 'https://www.bis.org';
+
       return `
         <tr>
           <td class="cal-col-date">
-            <span class="cal-date-badge">${evt.date}</span>
+            <span class="cal-date-badge">${evt.date || evt.scheduledDate || '—'}</span>
           </td>
           <td class="cal-col-time">
             <span class="cal-time">${timeStr}</span>
           </td>
           <td class="cal-col-event">
             <div class="cal-event-cell">
-              <span class="cal-event-title">${evt.event}</span>
+              <span class="cal-event-title">${evt.event || evt.eventName || '—'}</span>
+              <div style="display:flex;align-items:center;gap:6px;margin-top:3px;flex-wrap:wrap;">
+                <a href="${sourceUrl}" target="_blank" rel="noopener noreferrer" class="cal-source-pill" title="Click to verify release on official ${sourceName} portal">
+                  🏛️ ${evt.source || sourceName} ↗
+                </a>
+                ${evt.unit && evt.unit !== '%' ? `<span style="font-size:9.5px;color:var(--text-muted);font-family:monospace;">${evt.unit}</span>` : ''}
+              </div>
             </div>
           </td>
           <td class="cal-col-country">
@@ -746,10 +491,10 @@
             </div>
           </td>
           <td class="cal-col-impact">
-            <span class="impact-badge ${impactClass}">${evt.impact}</span>
+            <span class="impact-badge ${impactClass}">${impactLabel}</span>
           </td>
-          <td class="cal-col-previous cal-value-cell">${evt.previous}</td>
-          <td class="cal-col-forecast cal-value-cell">${evt.forecast}</td>
+          <td class="cal-col-previous cal-value-cell">${evt.previous || '—'}</td>
+          <td class="cal-col-forecast cal-value-cell">${evt.forecast || '—'}</td>
           <td class="cal-col-actual cal-value-cell" style="${actualStyle}">${actualVal}</td>
         </tr>
       `;

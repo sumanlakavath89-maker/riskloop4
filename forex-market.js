@@ -921,7 +921,9 @@
     initForexCalendarNews();
     initForexTradingSessions();
     initForexCorrelation();
-    initForexComments();
+    if (window.marketComments && typeof window.marketComments.loadComments === 'function') {
+      window.marketComments.loadComments('forex');
+    }
   }
 
   window.initForexMarket = initForexMarket;

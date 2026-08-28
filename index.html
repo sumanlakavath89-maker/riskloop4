@@ -4656,11 +4656,11 @@
                     </span>
                   </div>
                   <div class="lb-user-rank-highlight">
-                    <span class="lb-rank-num" id="lbUserRankVal">#47</span>
-                    <span class="lb-rank-total" id="lbUserTotalVal">of 2,184</span>
-                    <span class="lb-percentile-tag" id="lbUserPercentileVal">Top 2.2%</span>
+                    <span class="lb-rank-num" id="lbUserRankVal">—</span>
+                    <span class="lb-rank-total" id="lbUserTotalVal"></span>
+                    <span class="lb-percentile-tag" id="lbUserPercentileVal" style="display:none;"></span>
                     <span class="lb-movement-tag" id="lbUserMovementVal">
-                      <span class="lb-move-up">↑ 13 places</span>
+                      <span class="lb-move-neutral">—</span>
                     </span>
                   </div>
                 </div>
@@ -4669,8 +4669,8 @@
               <!-- Score Chip -->
               <div class="lb-user-score-box">
                 <div class="lb-score-label">RiskLoop Score</div>
-                <div class="lb-score-big" id="lbUserScoreVal">88.6</div>
-                <div class="lb-score-sub">Top Tier Discipline</div>
+                <div class="lb-score-big" id="lbUserScoreVal">—</div>
+                <div class="lb-score-sub" id="lbUserScoreSub">No performance data available yet</div>
               </div>
             </div>
 
@@ -4678,19 +4678,19 @@
             <div class="lb-user-stats-strip">
               <div class="lb-u-stat">
                 <span class="lb-u-label">Return</span>
-                <span class="lb-stat-badge lb-pos" id="lbUserReturnVal">+24.6%</span>
+                <span class="lb-stat-badge" id="lbUserReturnVal">—</span>
               </div>
               <div class="lb-u-stat">
                 <span class="lb-u-label">Win Rate</span>
-                <span class="lb-u-val" id="lbUserWinRateVal">64.0%</span>
+                <span class="lb-u-val" id="lbUserWinRateVal">—</span>
               </div>
               <div class="lb-u-stat">
                 <span class="lb-u-label">Profit Factor</span>
-                <span class="lb-u-val" id="lbUserPfVal">2.18</span>
+                <span class="lb-u-val" id="lbUserPfVal">—</span>
               </div>
               <div class="lb-u-stat">
                 <span class="lb-u-label">Avg R</span>
-                <span class="lb-u-val" id="lbUserAvgRVal">1:1.85</span>
+                <span class="lb-u-val" id="lbUserAvgRVal">—</span>
               </div>
             </div>
           </div>
@@ -4751,12 +4751,17 @@
             </div>
 
             <!-- Empty Search State -->
-            <div class="lb-empty-notice" id="lbEmptyNotice" hidden>
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                <circle cx="11" cy="11" r="8" />
-                <path d="m21 21-4.35-4.35" />
+            <div class="lb-empty-notice" id="lbEmptyNotice">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
+                <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
+                <path d="M4 22h16" />
+                <path d="M10 14.66V17c0 .55-.45 1-1 1H7c-.55 0-1-.45-1-1v-2.34" />
+                <path d="M18 14.66V17c0 .55-.45 1-1 1h-2c-.55 0-1-.45-1-1v-2.34" />
+                <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
               </svg>
-              <p>No matching traders found for the selected criteria.</p>
+              <h4 style="margin: 8px 0 4px; font-size: 15px; color: var(--text);">No leaderboard data available yet</h4>
+              <p style="color: var(--text-muted); font-size: 12.5px;">Be among the first traders to build a verified track record.</p>
             </div>
           </div>
         </section>

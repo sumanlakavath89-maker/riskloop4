@@ -7765,7 +7765,7 @@
                 </svg>
                 <span>Account Size</span>
               </div>
-              <div class="portfolio-stat-val" id="psAccountSize">₹5,000.00</div>
+              <div class="portfolio-stat-val" id="psAccountSize">—</div>
             </div>
 
             <div class="jcard portfolio-top-stat-card">
@@ -7777,7 +7777,8 @@
                 </svg>
                 <span>Today's Profit</span>
               </div>
-              <div class="portfolio-stat-val" id="psTodayProfit">₹0.00</div>
+              <div class="portfolio-stat-val" id="psTodayProfit">—</div>
+              <div class="portfolio-stat-sub" id="psTodayProfitSub" style="font-size:11px;color:var(--text-muted);margin-top:2px;">No trades closed yet</div>
             </div>
           </div>
 
@@ -7800,7 +7801,8 @@
               </div>
 
               <div class="portfolio-radar-footer">
-                <div class="portfolio-score-num" id="psRadarScore">2.84</div>
+                <div class="portfolio-score-num" id="psRadarScore">—</div>
+                <div class="portfolio-score-sub" id="psRadarScoreSub" style="font-size:11px;color:rgba(255,255,255,0.7);margin-top:2px;">Not enough trading data</div>
               </div>
             </div>
 
@@ -7810,14 +7812,14 @@
               <div class="portfolio-bal-group">
                 <div class="portfolio-bal-row">
                   <span class="portfolio-bal-label">Balance</span>
-                  <span class="portfolio-bal-val" id="psBalanceVal">₹4,63,166.00</span>
+                  <span class="portfolio-bal-val" id="psBalanceVal">—</span>
                 </div>
                 <div class="portfolio-slider-track">
-                  <div class="portfolio-slider-bar" style="width: 78%;">
+                  <div class="portfolio-slider-bar" id="psBalanceBar" style="width: 0%;">
                     <span class="portfolio-slider-handle"></span>
                   </div>
                 </div>
-                <div class="portfolio-bal-max" id="psBalanceMax">₹5,06,558.00 Max</div>
+                <div class="portfolio-bal-max" id="psBalanceMax">No balance data available</div>
               </div>
 
               <div class="portfolio-bal-divider"></div>
@@ -7826,14 +7828,14 @@
               <div class="portfolio-bal-group">
                 <div class="portfolio-bal-row">
                   <span class="portfolio-bal-label">Equity</span>
-                  <span class="portfolio-bal-val" id="psEquityVal">₹4,63,166.00</span>
+                  <span class="portfolio-bal-val" id="psEquityVal">—</span>
                 </div>
                 <div class="portfolio-slider-track">
-                  <div class="portfolio-slider-bar" style="width: 78%;">
+                  <div class="portfolio-slider-bar" id="psEquityBar" style="width: 0%;">
                     <span class="portfolio-slider-handle"></span>
                   </div>
                 </div>
-                <div class="portfolio-bal-max" id="psEquityMax">₹5,12,410.00 Max</div>
+                <div class="portfolio-bal-max" id="psEquityMax">No equity data available</div>
               </div>
             </div>
           </div>
@@ -7858,7 +7860,7 @@
             </div>
           </div>
 
-          <!-- 4 Core Metric KPI Cards Row (From Screenshot 1) -->
+          <!-- 4 Core Metric KPI Cards Row -->
           <div class="portfolio-kpi-4grid" style="margin-top: 16px;">
             <!-- 1. Average Win -->
             <div class="jcard portfolio-top-stat-card">
@@ -7870,7 +7872,7 @@
                 </svg>
                 <span>Average Win</span>
               </div>
-              <div class="portfolio-stat-val text-profit" id="pmAvgWin">+₹4,320.00</div>
+              <div class="portfolio-stat-val" id="pmAvgWin">—</div>
             </div>
 
             <!-- 2. Win Ratio -->
@@ -7884,7 +7886,7 @@
                 </svg>
                 <span>Win Ratio</span>
               </div>
-              <div class="portfolio-stat-val" id="pmWinRate">64.2%</div>
+              <div class="portfolio-stat-val" id="pmWinRate">—</div>
             </div>
 
             <!-- 3. Average Loss -->
@@ -7897,7 +7899,7 @@
                 </svg>
                 <span>Average Loss</span>
               </div>
-              <div class="portfolio-stat-val text-loss" id="pmAvgLoss">-₹1,850.00</div>
+              <div class="portfolio-stat-val" id="pmAvgLoss">—</div>
             </div>
 
             <!-- 4. Profit Factor -->
@@ -7911,7 +7913,7 @@
                 </svg>
                 <span>Profit Factor</span>
               </div>
-              <div class="portfolio-stat-val" id="pmProfitFactor">2.68</div>
+              <div class="portfolio-stat-val" id="pmProfitFactor">—</div>
             </div>
           </div>
 
@@ -8118,7 +8120,7 @@
           </div>
         </section>
 
-        <!-- 3. Long Analysis & Short Analysis Arc Gauge Cards (From Screenshot 2) -->
+        <!-- 3. Long Analysis & Short Analysis Arc Gauge Cards -->
         <section class="portfolio-section">
           <div class="portfolio-gauge-grid">
             <!-- Long Analysis Card -->
@@ -8128,21 +8130,21 @@
                 <canvas id="longGaugeCanvas"></canvas>
                 <div class="portfolio-gauge-center">
                   <span class="portfolio-gauge-label">Profit</span>
-                  <span class="portfolio-gauge-val text-profit" id="plsLongPnl">+$698.50</span>
+                  <span class="portfolio-gauge-val" id="plsLongPnl">—</span>
                 </div>
               </div>
               <div class="portfolio-gauge-footer">
                 <div class="portfolio-gauge-col">
-                  <span class="p-sub-label" id="plsLongWinsLabel">Wins (33)</span>
-                  <span class="p-sub-val" id="plsLongWinsVal">$1,450.00</span>
+                  <span class="p-sub-label" id="plsLongWinsLabel">Wins (0)</span>
+                  <span class="p-sub-val" id="plsLongWinsVal">—</span>
                 </div>
                 <div class="portfolio-gauge-col" style="text-align: center;">
                   <span class="p-sub-label">Win Rate</span>
-                  <span class="p-sub-val" id="plsLongWinRate">68.75%</span>
+                  <span class="p-sub-val" id="plsLongWinRate">—</span>
                 </div>
                 <div class="portfolio-gauge-col" style="text-align: right;">
-                  <span class="p-sub-label" id="plsLongLossesLabel">Losses (15)</span>
-                  <span class="p-sub-val text-loss" id="plsLongLossesVal">-$751.50</span>
+                  <span class="p-sub-label" id="plsLongLossesLabel">Losses (0)</span>
+                  <span class="p-sub-val" id="plsLongLossesVal">—</span>
                 </div>
               </div>
             </div>
@@ -8154,21 +8156,21 @@
                 <canvas id="shortGaugeCanvas"></canvas>
                 <div class="portfolio-gauge-center">
                   <span class="portfolio-gauge-label">Profit</span>
-                  <span class="portfolio-gauge-val text-loss" id="plsShortPnl">-$354.56</span>
+                  <span class="portfolio-gauge-val" id="plsShortPnl">—</span>
                 </div>
               </div>
               <div class="portfolio-gauge-footer">
                 <div class="portfolio-gauge-col">
-                  <span class="p-sub-label" id="plsShortWinsLabel">Wins (20)</span>
-                  <span class="p-sub-val" id="plsShortWinsVal">$698.50</span>
+                  <span class="p-sub-label" id="plsShortWinsLabel">Wins (0)</span>
+                  <span class="p-sub-val" id="plsShortWinsVal">—</span>
                 </div>
                 <div class="portfolio-gauge-col" style="text-align: center;">
                   <span class="p-sub-label">Win Rate</span>
-                  <span class="p-sub-val" id="plsShortWinRate">41.67%</span>
+                  <span class="p-sub-val" id="plsShortWinRate">—</span>
                 </div>
                 <div class="portfolio-gauge-col" style="text-align: right;">
-                  <span class="p-sub-label" id="plsShortLossesLabel">Losses (28)</span>
-                  <span class="p-sub-val text-loss" id="plsShortLossesVal">$1,053.06</span>
+                  <span class="p-sub-label" id="plsShortLossesLabel">Losses (0)</span>
+                  <span class="p-sub-val" id="plsShortLossesVal">—</span>
                 </div>
               </div>
             </div>
@@ -8199,25 +8201,25 @@
               <div class="portfolio-behaviour-grid">
                 <div class="portfolio-beh-item">
                   <span class="p-beh-label">Discipline Score</span>
-                  <span class="p-beh-val text-profit" id="pbDiscipline">92%</span>
+                  <span class="p-beh-val" id="pbDiscipline">—</span>
                   <span class="p-beh-sub">Trading plan adherence</span>
                 </div>
 
                 <div class="portfolio-beh-item">
                   <span class="p-beh-label">Avg. Holding Time</span>
-                  <span class="p-beh-val text-accent" id="pbHoldTime">38 mins</span>
+                  <span class="p-beh-val" id="pbHoldTime">—</span>
                   <span class="p-beh-sub">Intraday sweet spot</span>
                 </div>
 
                 <div class="portfolio-beh-item">
                   <span class="p-beh-label">Risk Compliance</span>
-                  <span class="p-beh-val text-profit" id="pbRiskCompliance">98%</span>
+                  <span class="p-beh-val" id="pbRiskCompliance">—</span>
                   <span class="p-beh-sub">Max 1% account risk</span>
                 </div>
 
                 <div class="portfolio-beh-item">
                   <span class="p-beh-label">Revenge Trading Flags</span>
-                  <span class="p-beh-val text-profit" id="pbRevengeFlags">0 Flags</span>
+                  <span class="p-beh-val" id="pbRevengeFlags">0 Flags</span>
                   <span class="p-beh-sub">Zero emotional tilt</span>
                 </div>
               </div>
@@ -8244,14 +8246,14 @@
                   <span style="font-size:18px;">🇮🇳</span>
                   <span>Indian Market</span>
                 </div>
-                <div class="portfolio-inst-rate text-profit" id="pmkIndianWinRate">68% Win Rate</div>
+                <div class="portfolio-inst-rate" id="pmkIndianWinRate">—</div>
               </div>
               <div class="jstat-bar">
-                <div class="jstat-bar-fill" id="pmkIndianBar" style="width:68%"></div>
+                <div class="jstat-bar-fill" id="pmkIndianBar" style="width:0%"></div>
               </div>
               <div class="portfolio-inst-foot">
-                <span id="pmkIndianTrades">48 trades (33W · 15L)</span>
-                <span class="text-profit" id="pmkIndianPnl">+$582.40 P&amp;L</span>
+                <span id="pmkIndianTrades">0 trades (0W · 0L)</span>
+                <span id="pmkIndianPnl">—</span>
               </div>
             </div>
 
@@ -8262,14 +8264,14 @@
                   <span style="font-size:18px;">💱</span>
                   <span>Forex Market</span>
                 </div>
-                <div class="portfolio-inst-rate text-profit" id="pmkForexWinRate">66.7% Win Rate</div>
+                <div class="portfolio-inst-rate" id="pmkForexWinRate">—</div>
               </div>
               <div class="jstat-bar">
-                <div class="jstat-bar-fill" id="pmkForexBar" style="width:66.7%"></div>
+                <div class="jstat-bar-fill" id="pmkForexBar" style="width:0%"></div>
               </div>
               <div class="portfolio-inst-foot">
-                <span id="pmkForexTrades">24 trades (16W · 8L)</span>
-                <span class="text-profit" id="pmkForexPnl">+$342.50 P&amp;L</span>
+                <span id="pmkForexTrades">0 trades (0W · 0L)</span>
+                <span id="pmkForexPnl">—</span>
               </div>
             </div>
 
@@ -8280,14 +8282,14 @@
                   <span style="font-size:18px;">🪙</span>
                   <span>Crypto Market</span>
                 </div>
-                <div class="portfolio-inst-rate text-accent" id="pmkCryptoWinRate">60% Win Rate</div>
+                <div class="portfolio-inst-rate" id="pmkCryptoWinRate">—</div>
               </div>
               <div class="jstat-bar">
-                <div class="jstat-bar-fill" id="pmkCryptoBar" style="width:60%"></div>
+                <div class="jstat-bar-fill" id="pmkCryptoBar" style="width:0%"></div>
               </div>
               <div class="portfolio-inst-foot">
-                <span id="pmkCryptoTrades">10 trades (6W · 4L)</span>
-                <span class="text-profit" id="pmkCryptoPnl">+$191.27 P&amp;L</span>
+                <span id="pmkCryptoTrades">0 trades (0W · 0L)</span>
+                <span id="pmkCryptoPnl">—</span>
               </div>
             </div>
           </div>
@@ -8314,14 +8316,14 @@
                   </svg>
                   <span>Stock (Equity)</span>
                 </div>
-                <div class="portfolio-inst-rate text-profit" id="pinsStockWinRate">68% Win Rate</div>
+                <div class="portfolio-inst-rate" id="pinsStockWinRate">—</div>
               </div>
               <div class="jstat-bar">
-                <div class="jstat-bar-fill" style="width:68%"></div>
+                <div class="jstat-bar-fill" style="width:0%"></div>
               </div>
               <div class="portfolio-inst-foot">
-                <span id="pinsStockTrades">31 trades (21W · 10L)</span>
-                <span class="text-profit" id="pinsStockPnl">+₹42,600 P&amp;L</span>
+                <span id="pinsStockTrades">0 trades (0W · 0L)</span>
+                <span id="pinsStockPnl">—</span>
               </div>
             </div>
 
@@ -8335,20 +8337,20 @@
                   </svg>
                   <span>F&amp;O (Futures &amp; Options)</span>
                 </div>
-                <div class="portfolio-inst-rate text-accent" id="pinsFoWinRate">49% Win Rate</div>
+                <div class="portfolio-inst-rate" id="pinsFoWinRate">—</div>
               </div>
               <div class="jstat-bar">
-                <div class="jstat-bar-fill" style="width:49%"></div>
+                <div class="jstat-bar-fill" style="width:0%"></div>
               </div>
               <div class="portfolio-inst-foot">
-                <span id="pinsFoTrades">51 trades (25W · 26L)</span>
-                <span class="text-profit" id="pinsFoPnl">+₹50,600 P&amp;L</span>
+                <span id="pinsFoTrades">0 trades (0W · 0L)</span>
+                <span id="pinsFoPnl">—</span>
               </div>
             </div>
           </div>
         </section>
 
-        <!-- B. Forex Broker Session Performance View (Screenshot 1) -->
+        <!-- B. Forex Broker Session Performance View -->
         <section class="portfolio-section" id="portfolioForexSessionView" hidden>
           <div class="jcard portfolio-session-card">
             <div class="portfolio-session-label">SESSION WIN RATES</div>
@@ -8356,30 +8358,30 @@
               <div class="portfolio-session-row">
                 <div class="portfolio-session-hdr">
                   <span class="portfolio-session-name">New York</span>
-                  <span class="portfolio-session-rate">47.3%</span>
+                  <span class="portfolio-session-rate">—</span>
                 </div>
                 <div class="portfolio-session-bar-track">
-                  <div class="portfolio-session-bar-fill" style="width: 47.3%;"></div>
+                  <div class="portfolio-session-bar-fill" style="width: 0%;"></div>
                 </div>
               </div>
 
               <div class="portfolio-session-row">
                 <div class="portfolio-session-hdr">
                   <span class="portfolio-session-name">London</span>
-                  <span class="portfolio-session-rate">41.9%</span>
+                  <span class="portfolio-session-rate">—</span>
                 </div>
                 <div class="portfolio-session-bar-track">
-                  <div class="portfolio-session-bar-fill" style="width: 41.9%;"></div>
+                  <div class="portfolio-session-bar-fill" style="width: 0%;"></div>
                 </div>
               </div>
 
               <div class="portfolio-session-row">
                 <div class="portfolio-session-hdr">
                   <span class="portfolio-session-name">Asia</span>
-                  <span class="portfolio-session-rate">52.4%</span>
+                  <span class="portfolio-session-rate">—</span>
                 </div>
                 <div class="portfolio-session-bar-track">
-                  <div class="portfolio-session-bar-fill" style="width: 52.4%;"></div>
+                  <div class="portfolio-session-bar-fill" style="width: 0%;"></div>
                 </div>
               </div>
             </div>
@@ -8411,7 +8413,7 @@
                   </tr>
                 </thead>
                 <tbody id="portfolioStrategyTableBody">
-                  <!-- Rendered dynamically -->
+                  <tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:24px;">No strategy data recorded yet</td></tr>
                 </tbody>
               </table>
             </div>

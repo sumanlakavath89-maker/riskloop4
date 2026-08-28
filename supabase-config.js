@@ -125,6 +125,15 @@
     };
   }
 
+  function getAuthApiUrl(path) {
+    const cleanPath = path.startsWith('/') ? path : '/' + path;
+    const origin = typeof window !== 'undefined' && window.location ? window.location.origin : '';
+    if (origin && origin.startsWith('http') && !origin.includes(':5500') && !origin.includes(':8080') && !origin.includes(':5173')) {
+      return cleanPath;
+    }
+    return 'http://localhost:3000' + cleanPath;
+  }
+
   /**
    * Fetch authenticated user's profile from database / Supabase profiles table
    */
@@ -172,7 +181,8 @@
       authHeaders['x-user-id'] = user.id;
       if (user.email) authHeaders['x-user-email'] = user.email;
 
-      const resp = await fetch('/api/profile', { headers: authHeaders });
+      const apiUrl = getAuthApiUrl('/api/profile');
+      const resp = await fetch(apiUrl, { headers: authHeaders });
       if (resp.ok) {
         const resJson = await resp.json();
         if (resJson.success && resJson.data) {
@@ -466,7 +476,7 @@
 
   // Dynamically fetch and sync with live backend environment configuration
   if (typeof fetch !== 'undefined') {
-    fetch('/api/config/supabase')
+    fetch(getAuthApiUrl('/api/config/supabase'))
       .then(res => res.json())
       .then(data => {
         if (data && data.isConfigured && data.supabaseUrl && data.supabaseAnonKey) {

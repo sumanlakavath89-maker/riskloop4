@@ -203,6 +203,10 @@
         sbProfile?.avatar_url ||
         backendProfile?.avatar_url ||
         backendProfile?.avatarUrl ||
+        currentUser?.userMetadata?.avatar_url ||
+        currentUser?.userMetadata?.picture ||
+        currentUser?.user_metadata?.avatar_url ||
+        currentUser?.user_metadata?.picture ||
         currentUser?.avatar_url ||
         currentUser?.avatarUrl ||
         ''
@@ -667,13 +671,44 @@
         els.avatarUrlInput.value = newAvatar;
       }
 
-      // 2. Permanently upsert Cloudinary secure_url into Supabase profiles table
-      if (window.supabaseClient && profileState.user && profileState.user.id) {
+      // 2. Resolve active authenticated user identity
+      let activeUser = profileState.user;
+      if (!activeUser || !activeUser.id) {
+        if (window.RiskLoopAuth && typeof window.RiskLoopAuth.getUser === 'function') {
+          activeUser = window.RiskLoopAuth.getUser();
+        }
+      }
+      if (!activeUser || !activeUser.id) {
+        if (window.RiskLoopAuth && typeof window.RiskLoopAuth.getCurrentUser === 'function') {
+          try { activeUser = await window.RiskLoopAuth.getCurrentUser(); } catch (_) {}
+        }
+      }
+      if (!activeUser || !activeUser.id) {
+        try {
+          const raw = localStorage.getItem('riskloop_current_user');
+          if (raw) activeUser = JSON.parse(raw);
+        } catch (_) {}
+      }
+      if (!activeUser || !activeUser.id) {
+        if (window.supabaseClient && window.supabaseClient.auth) {
+          try {
+            const { data: { user: sbU } } = await window.supabaseClient.auth.getUser();
+            if (sbU) activeUser = sbU;
+          } catch (_) {}
+        }
+      }
+
+      const activeUserId = activeUser?.id || (window.supabaseClient?.auth ? (await window.supabaseClient.auth.getUser())?.data?.user?.id : null);
+      const activeEmail = activeUser?.email || profileState.profileData.email || 'trader@riskloop.io';
+      const activeFullName = profileState.profileData.fullName || activeUser?.fullName || 'Trader';
+
+      // 3. Permanently upsert Cloudinary secure_url into Supabase profiles table & auth metadata
+      if (window.supabaseClient && activeUserId) {
         try {
           const updatePayload = {
-            id: profileState.user.id,
-            email: profileState.user.email || profileState.profileData.email,
-            full_name: profileState.profileData.fullName || profileState.user.fullName,
+            id: activeUserId,
+            email: activeEmail,
+            full_name: activeFullName,
             avatar_url: newAvatar || null,
             avatar_public_id: newPublicId || null,
             updated_at: new Date().toISOString()
@@ -695,6 +730,7 @@
             await window.supabaseClient.auth.updateUser({
               data: {
                 avatar_url: newAvatar || null,
+                avatarUrl: newAvatar || null,
                 picture: newAvatar || null
               }
             });
@@ -704,10 +740,12 @@
         }
       }
 
-      // 3. Update localStorage & RiskLoopAuth
+      // 4. Update localStorage & RiskLoopAuth
       const updatedUserObj = {
-        ...(profileState.user || {}),
-        fullName: profileState.profileData.fullName,
+        ...(activeUser || profileState.user || {}),
+        id: activeUserId || profileState.user?.id || 'trader_session',
+        email: activeEmail,
+        fullName: activeFullName,
         avatarUrl: newAvatar,
         avatar_url: newAvatar,
         avatarPublicId: newPublicId || (avatarUploadState.pendingIsRemove ? null : profileState.user?.avatarPublicId)
@@ -718,7 +756,7 @@
         localStorage.setItem('riskloop_current_user', JSON.stringify(updatedUserObj));
       } catch (_) {}
 
-      // 4. Synchronize all UI avatars across header, dashboard, and profile
+      // 5. Synchronize all UI avatars across header, dashboard, and profile
       syncAppHeaderUser(updatedUserObj);
       renderProfileView();
 
@@ -758,7 +796,9 @@
     data.phone = newPhone;
     data.country = newCountry;
     data.timezone = newTimezone;
-    data.avatarUrl = newAvatarUrl;
+    if (newAvatarUrl) {
+      data.avatarUrl = newAvatarUrl;
+    }
 
     // Disable save button while saving
     if (els.saveBtn) {
@@ -770,16 +810,37 @@
     }
 
     try {
-      // 1. Update Supabase Database if client is live
-      if (window.supabaseClient && profileState.user && profileState.user.id) {
-        const uid = profileState.user.id;
+      // Resolve active user identity
+      let activeUser = profileState.user;
+      if (!activeUser || !activeUser.id) {
+        if (window.RiskLoopAuth && typeof window.RiskLoopAuth.getUser === 'function') {
+          activeUser = window.RiskLoopAuth.getUser();
+        }
+      }
+      if (!activeUser || !activeUser.id) {
+        if (window.RiskLoopAuth && typeof window.RiskLoopAuth.getCurrentUser === 'function') {
+          try { activeUser = await window.RiskLoopAuth.getCurrentUser(); } catch (_) {}
+        }
+      }
+      if (!activeUser || !activeUser.id) {
+        try {
+          const raw = localStorage.getItem('riskloop_current_user');
+          if (raw) activeUser = JSON.parse(raw);
+        } catch (_) {}
+      }
 
+      const uid = activeUser?.id || (window.supabaseClient?.auth ? (await window.supabaseClient.auth.getUser())?.data?.user?.id : null);
+      const email = activeUser?.email || data.email || 'trader@riskloop.io';
+      const effectiveAvatar = data.avatarUrl || activeUser?.avatarUrl || activeUser?.avatar_url || null;
+
+      // 1. Update Supabase Database if client is live
+      if (window.supabaseClient && uid) {
         // Upsert profiles table
         const profilePayload = {
           id: uid,
-          email: profileState.user.email || data.email,
+          email: email,
           full_name: newFullName,
-          avatar_url: newAvatarUrl || null,
+          avatar_url: effectiveAvatar,
           avatar_public_id: data.avatarPublicId || null,
           updated_at: new Date().toISOString()
         };
@@ -808,18 +869,39 @@
           await window.supabaseClient.auth.updateUser({
             data: {
               full_name: newFullName,
-              avatar_url: newAvatarUrl || null
+              avatar_url: effectiveAvatar,
+              avatarUrl: effectiveAvatar,
+              picture: effectiveAvatar
             }
           });
         } catch (_) {}
       }
 
-      // 2. Update RiskLoopAuth state & localStorage
+      // 2. Also sync to backend API if available
+      try {
+        const authHeaders = await getProfileAuthHeaders();
+        authHeaders['Content-Type'] = 'application/json';
+        await fetch(getProfileApiUrl('/api/profile'), {
+          method: 'PUT',
+          headers: authHeaders,
+          body: JSON.stringify({
+            fullName: newFullName,
+            avatarUrl: effectiveAvatar,
+            phone: newPhone,
+            country: newCountry,
+            timezone: newTimezone
+          })
+        });
+      } catch (_) {}
+
+      // 3. Update RiskLoopAuth state & localStorage
       const updatedUserObj = {
-        ...(profileState.user || {}),
+        ...(activeUser || profileState.user || {}),
+        id: uid || profileState.user?.id || 'trader_session',
+        email: email,
         fullName: newFullName,
-        avatarUrl: newAvatarUrl,
-        avatar_url: newAvatarUrl,
+        avatarUrl: effectiveAvatar,
+        avatar_url: effectiveAvatar,
         phone: newPhone,
         country: newCountry,
         timezone: newTimezone

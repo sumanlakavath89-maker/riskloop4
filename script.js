@@ -10555,6 +10555,16 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
+  // Immediately synchronize header with current auth cache on startup
+  try {
+    const initialAuthUser = (window.RiskLoopAuth && typeof window.RiskLoopAuth.getUser === 'function')
+      ? window.RiskLoopAuth.getUser()
+      : JSON.parse(localStorage.getItem('riskloop_current_user') || 'null');
+    if (initialAuthUser && initialAuthUser.email) {
+      updateHeaderAuthState(initialAuthUser);
+    }
+  } catch (_) {}
+
   // ============================================================
   // RESET PASSWORD MODAL CONTROLLER (SUPABASE RECOVERY)
   // ============================================================

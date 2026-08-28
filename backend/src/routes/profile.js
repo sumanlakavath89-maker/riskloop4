@@ -250,6 +250,70 @@ router.get('/', requireAuth, async (req, res) => {
 });
 
 /**
+ * PUT /api/profile
+ * Update user profile details
+ */
+router.put('/', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { fullName, full_name, avatarUrl, avatar_url, phone, country, timezone } = req.body || {};
+    const name = fullName || full_name || req.user.email?.split('@')[0] || 'Trader';
+    const avatar = avatarUrl || avatar_url || null;
+    const now = new Date().toISOString();
+
+    // 1. Update SQLite
+    try {
+      db.upsertProfile({
+        id: userId,
+        email: req.user.email,
+        full_name: name,
+        avatar_url: avatar,
+        phone: phone || null,
+        country: country || null,
+        timezone: timezone || null,
+        updated_at: now
+      });
+    } catch (dbErr) {
+      console.warn('[Profile Route] SQLite upsertProfile warning:', dbErr.message);
+    }
+
+    // 2. Update Supabase
+    if (supportService.supabase) {
+      try {
+        await supportService.supabase
+          .from('profiles')
+          .upsert({
+            id: userId,
+            email: req.user.email,
+            full_name: name,
+            avatar_url: avatar,
+            updated_at: now
+          });
+      } catch (sbErr) {
+        console.warn('[Profile Route] Supabase profile upsert warning:', sbErr.message);
+      }
+    }
+
+    return res.json({
+      success: true,
+      message: 'Profile updated successfully',
+      data: {
+        id: userId,
+        email: req.user.email,
+        fullName: name,
+        avatarUrl: avatar,
+        phone: phone || null,
+        country: country || null,
+        timezone: timezone || null
+      }
+    });
+  } catch (err) {
+    console.error('[Profile PUT Error]', err);
+    return res.status(500).json({ success: false, error: err.message || 'Internal server error' });
+  }
+});
+
+/**
  * POST /api/profile/avatar
  * Upload or replace user profile avatar in Cloudinary
  * Target Folder: riskloop/profiles/<user-id>/

@@ -168,35 +168,39 @@
     }
   };
 
+  function loadSavedConnectedBrokers() {
+    try {
+      const saved = localStorage.getItem('riskloop_connected_brokers');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (e) {}
+    return [];
+  }
+
+  function saveConnectedBrokers() {
+    try {
+      localStorage.setItem('riskloop_connected_brokers', JSON.stringify(state.connectedBrokers));
+      if (state.connectedBrokers.length > 0) {
+        localStorage.setItem('riskloop_connected_broker', JSON.stringify({
+          connected: true,
+          brokerName: state.connectedBrokers[0].name,
+          id: state.connectedBrokers[0].id
+        }));
+      } else {
+        localStorage.removeItem('riskloop_connected_broker');
+      }
+      if (typeof window.initDashboardPage === 'function') {
+        window.initDashboardPage();
+      }
+    } catch (e) {}
+  }
+
   // Internal State
   let state = {
     activeCategory: 'all', // 'all', 'indian', 'forex'
-    connectedBrokers: [
-      {
-        id: 'angelone',
-        name: 'Angel One',
-        accountName: 'Suman Ghosh',
-        maskedId: 'AB****8963',
-        status: 'connected',
-        segment: 'NSE / NFO / BSE',
-        lastSync: 'Just now (Live WebSocket)',
-        tradesSynced: 81,
-        latency: '18ms',
-        syncMode: 'SmartAPI Stream'
-      },
-      {
-        id: 'mt5',
-        name: 'MetaTrader 5',
-        accountName: 'IC Markets Live',
-        maskedId: '5029****',
-        status: 'connected',
-        segment: 'Forex / Commodities',
-        lastSync: '2 mins ago (Bridge Active)',
-        tradesSynced: 67,
-        latency: '24ms',
-        syncMode: 'MQL5 Local Bridge'
-      }
-    ],
+    connectedBrokers: loadSavedConnectedBrokers(),
     selectedBroker: null
   };
 
@@ -589,6 +593,7 @@
     }
 
     state.connectedBrokers = state.connectedBrokers.filter(b => b.id !== brokerId);
+    saveConnectedBrokers();
     updateSummaryMetrics();
     renderConnectedBrokers();
     renderAvailableBrokers();
@@ -659,6 +664,7 @@
         btn.innerHTML = origText;
       }
 
+      saveConnectedBrokers();
       closeBrokerConnectModal();
       updateSummaryMetrics();
       renderConnectedBrokers();
@@ -713,6 +719,7 @@
 
   // Expose global methods
   window.initBrokersPage = initBrokersPage;
+  window.getConnectedBrokers = () => state.connectedBrokers;
   window.openBrokerConnectModal = openBrokerConnectModal;
   window.closeBrokerConnectModal = closeBrokerConnectModal;
   window.openManageBrokerModal = openManageBrokerModal;

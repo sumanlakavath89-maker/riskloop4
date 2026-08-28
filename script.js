@@ -10874,83 +10874,48 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // 2. Load Trading Settings
-    let ts = {
-      defaultRiskPct: 1.0,
-      maxDailyLossPct: 3.0,
-      capital: 500000,
-      capitalShieldActive: true,
-      accountCurrency: 'INR (₹)'
-    };
+    let ts = null;
+    let hasCustomSettings = false;
     try {
       const savedTs = localStorage.getItem('riskloop_trading_settings');
       if (savedTs) {
-        ts = { ...ts, ...JSON.parse(savedTs) };
+        ts = JSON.parse(savedTs);
+        hasCustomSettings = true;
       }
       const savedGs = localStorage.getItem('riskloop_general_settings');
       if (savedGs) {
         const gs = JSON.parse(savedGs);
-        if (gs.currencyDisplay) ts.accountCurrency = gs.currencyDisplay;
+        if (gs.currencyDisplay) {
+          if (!ts) ts = {};
+          ts.accountCurrency = gs.currencyDisplay;
+        }
       }
     } catch (e) {}
 
-    const totalCapital = Number(ts.capital || 500000);
-    const riskPct = Number(ts.defaultRiskPct || 1.0);
-    const maxRiskAmount = (totalCapital * riskPct) / 100;
-    const maxDailyLossPct = Number(ts.maxDailyLossPct || 3.0);
-    const maxDailyLossAmount = (totalCapital * maxDailyLossPct) / 100;
+    const accountCurrency = ts?.accountCurrency || 'INR (₹)';
+    const totalCapital = ts?.capital ? Number(ts.capital) : null;
+    const riskPct = ts?.defaultRiskPct ? Number(ts.defaultRiskPct) : null;
+    const maxRiskAmount = (totalCapital && riskPct) ? (totalCapital * riskPct) / 100 : null;
+    const maxDailyLossPct = ts?.maxDailyLossPct ? Number(ts.maxDailyLossPct) : null;
+    const maxDailyLossAmount = (totalCapital && maxDailyLossPct) ? (totalCapital * maxDailyLossPct) / 100 : null;
 
-    // 3. Load Actual Executed Journal Trades
+    // 3. Load Actual Executed Journal Trades (No mock fallback)
     let trades = [];
     try {
       const rawTrades = localStorage.getItem('riskloop_journal_trades');
       if (rawTrades) {
-        trades = JSON.parse(rawTrades);
+        const parsed = JSON.parse(rawTrades);
+        if (Array.isArray(parsed)) {
+          trades = parsed;
+        }
       }
     } catch (e) {}
 
-    // Fallback to sample institutional executions if new account with 0 journal entries
-    if (!Array.isArray(trades) || trades.length === 0) {
-      trades = [
-        {
-          symbol: 'NIFTY 24800 CE',
-          side: 'BUY',
-          quantity: 75,
-          entryPrice: 142.50,
-          exitPrice: 178.00,
-          pnl: 2662.50,
-          rMultiple: '+2.1R',
-          discipline: 'Followed Plan',
-          date: new Date().toISOString().split('T')[0]
-        },
-        {
-          symbol: 'RELIANCE',
-          side: 'BUY',
-          quantity: 40,
-          entryPrice: 2980.00,
-          exitPrice: 3025.00,
-          pnl: 1800.00,
-          rMultiple: '+1.5R',
-          discipline: 'CPR Breakout',
-          date: new Date().toISOString().split('T')[0]
-        },
-        {
-          symbol: 'BANKNIFTY 52400 PE',
-          side: 'SELL',
-          quantity: 30,
-          entryPrice: 280.00,
-          exitPrice: 295.00,
-          pnl: -450.00,
-          rMultiple: '-1.0R',
-          discipline: 'Strict SL Hit',
-          date: new Date().toISOString().split('T')[0]
-        }
-      ];
-    }
-
-    // 4. Calculate Portfolio Metrics
+    // 4. Calculate Portfolio Metrics from Real Trades
     const todayStr = new Date().toISOString().split('T')[0];
     const todayTrades = trades.filter(t => (t.date || '').startsWith(todayStr) || t.isToday);
-    const todayPnl = todayTrades.reduce((acc, t) => acc + (Number(t.pnl) || 0), 0);
+    const hasTodayTrades = todayTrades.length > 0;
+    const todayPnl = hasTodayTrades ? todayTrades.reduce((acc, t) => acc + (Number(t.pnl) || 0), 0) : null;
 
     const currentMonth = new Date().getMonth();
     const currentYear = new Date().getFullYear();
@@ -10959,61 +10924,104 @@ document.addEventListener('DOMContentLoaded', function() {
       const d = new Date(t.date);
       return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
     });
-    const mtdPnl = mtdTrades.reduce((acc, t) => acc + (Number(t.pnl) || 0), todayPnl > 0 && mtdTrades.length === 0 ? todayPnl : 0);
+    const hasMtdTrades = mtdTrades.length > 0;
+    const mtdPnl = hasMtdTrades ? mtdTrades.reduce((acc, t) => acc + (Number(t.pnl) || 0), 0) : null;
 
     // Open positions calculation
     const openTrades = trades.filter(t => t.status === 'OPEN');
-    const openExposure = openTrades.reduce((acc, t) => acc + (Number(t.quantity || 1) * Number(t.entryPrice || 0)), 0);
-    const availableCapital = Math.max(0, totalCapital - openExposure);
+    const hasOpenTrades = openTrades.length > 0;
+    const openExposure = hasOpenTrades ? openTrades.reduce((acc, t) => acc + (Number(t.quantity || 1) * Number(t.entryPrice || 0)), 0) : 0;
+    const availableCapital = totalCapital !== null ? Math.max(0, totalCapital - openExposure) : null;
 
-    // Check Connected Broker
-    let connectedBrokerName = 'Angel One SmartAPI';
-    let isBrokerConnected = true;
+    // Check Real Connected Brokers
+    let isBrokerConnected = false;
+    let connectedBrokerName = '';
     try {
-      const brokerConfig = localStorage.getItem('riskloop_connected_broker');
-      if (brokerConfig) {
-        const b = JSON.parse(brokerConfig);
-        connectedBrokerName = b.brokerName || b.name || 'Connected Broker';
-        isBrokerConnected = !!b.connected;
+      let brokerList = [];
+      const savedBrokers = localStorage.getItem('riskloop_connected_brokers');
+      if (savedBrokers) {
+        const parsed = JSON.parse(savedBrokers);
+        if (Array.isArray(parsed)) brokerList = parsed;
+      }
+      if (brokerList.length === 0 && typeof window.getConnectedBrokers === 'function') {
+        brokerList = window.getConnectedBrokers() || [];
+      }
+      if (brokerList.length === 0) {
+        const single = localStorage.getItem('riskloop_connected_broker');
+        if (single) {
+          const b = JSON.parse(single);
+          if (b && b.connected) brokerList = [b];
+        }
+      }
+
+      if (brokerList.length > 0) {
+        isBrokerConnected = true;
+        connectedBrokerName = brokerList.map(b => b.name || b.brokerName || 'Broker').join(', ');
       }
     } catch (e) {}
 
     // ── RENDER PORTFOLIO SNAPSHOT ──
     const elTotalCapital = document.getElementById('dashTotalCapital');
-    if (elTotalCapital) elTotalCapital.textContent = formatCurrency(totalCapital, ts.accountCurrency);
+    if (elTotalCapital) {
+      elTotalCapital.textContent = totalCapital !== null ? formatCurrency(totalCapital, accountCurrency) : '—';
+    }
 
     const elTodayPnl = document.getElementById('dashTodayPnl');
     const elTodayPnlSub = document.getElementById('dashTodayPnlSub');
     if (elTodayPnl) {
-      elTodayPnl.textContent = `${todayPnl >= 0 ? '+' : ''}${formatCurrency(todayPnl, ts.accountCurrency)}`;
-      elTodayPnl.className = `dash-metric-val ${todayPnl >= 0 ? 'text-profit' : 'text-loss'}`;
+      if (todayPnl !== null) {
+        elTodayPnl.textContent = `${todayPnl >= 0 ? '+' : ''}${formatCurrency(todayPnl, accountCurrency)}`;
+        elTodayPnl.className = `dash-metric-val ${todayPnl >= 0 ? 'text-profit' : 'text-loss'}`;
+      } else {
+        elTodayPnl.textContent = '—';
+        elTodayPnl.className = 'dash-metric-val';
+      }
     }
     if (elTodayPnlSub) {
-      elTodayPnlSub.innerHTML = `<span>${todayTrades.length} trade${todayTrades.length === 1 ? '' : 's'} closed today</span>`;
+      elTodayPnlSub.innerHTML = hasTodayTrades
+        ? `<span>${todayTrades.length} trade${todayTrades.length === 1 ? '' : 's'} closed today</span>`
+        : `<span>No trades closed yet</span>`;
     }
 
     const elMtdPnl = document.getElementById('dashMtdPnl');
     const elMtdPnlSub = document.getElementById('dashMtdPnlSub');
     if (elMtdPnl) {
-      elMtdPnl.textContent = `${mtdPnl >= 0 ? '+' : ''}${formatCurrency(mtdPnl, ts.accountCurrency)}`;
-      elMtdPnl.className = `dash-metric-val ${mtdPnl >= 0 ? 'text-profit' : 'text-loss'}`;
+      if (mtdPnl !== null) {
+        elMtdPnl.textContent = `${mtdPnl >= 0 ? '+' : ''}${formatCurrency(mtdPnl, accountCurrency)}`;
+        elMtdPnl.className = `dash-metric-val ${mtdPnl >= 0 ? 'text-profit' : 'text-loss'}`;
+      } else {
+        elMtdPnl.textContent = '—';
+        elMtdPnl.className = 'dash-metric-val';
+      }
     }
     if (elMtdPnlSub) {
-      const mtdRoi = totalCapital > 0 ? ((mtdPnl / totalCapital) * 100).toFixed(2) : '0.00';
-      elMtdPnlSub.innerHTML = `<span>${mtdRoi >= 0 ? '+' : ''}${mtdRoi}% MTD Return</span>`;
+      if (hasMtdTrades && totalCapital && totalCapital > 0) {
+        const mtdRoi = ((mtdPnl / totalCapital) * 100).toFixed(2);
+        elMtdPnlSub.innerHTML = `<span>${mtdRoi >= 0 ? '+' : ''}${mtdRoi}% MTD Return</span>`;
+      } else {
+        elMtdPnlSub.innerHTML = `<span>No data available</span>`;
+      }
     }
 
     const elAvailableCapital = document.getElementById('dashAvailableCapital');
-    if (elAvailableCapital) elAvailableCapital.textContent = formatCurrency(availableCapital, ts.accountCurrency);
+    if (elAvailableCapital) {
+      elAvailableCapital.textContent = availableCapital !== null ? formatCurrency(availableCapital, accountCurrency) : '—';
+    }
 
     const elOpenExposure = document.getElementById('dashOpenExposure');
     const elOpenExposureSub = document.getElementById('dashOpenExposureSub');
     if (elOpenExposure) {
-      elOpenExposure.textContent = `${openTrades.length} Active · ${formatCurrency(openExposure, ts.accountCurrency)}`;
+      elOpenExposure.textContent = hasOpenTrades
+        ? `${openTrades.length} Active · ${formatCurrency(openExposure, accountCurrency)}`
+        : '—';
     }
     if (elOpenExposureSub) {
-      const expPct = totalCapital > 0 ? ((openExposure / totalCapital) * 100).toFixed(1) : '0.0';
-      elOpenExposureSub.innerHTML = `<span>${expPct}% Capital Deployed</span>`;
+      if (hasOpenTrades && totalCapital && totalCapital > 0) {
+        const expPct = ((openExposure / totalCapital) * 100).toFixed(1);
+        elOpenExposureSub.innerHTML = `<span>${expPct}% Capital Deployed</span>`;
+      } else {
+        elOpenExposureSub.innerHTML = `<span>No active positions</span>`;
+      }
     }
 
     const elBrokerStatus = document.getElementById('dashBrokerStatus');
@@ -11021,69 +11029,118 @@ document.addEventListener('DOMContentLoaded', function() {
     if (elBrokerStatus) {
       elBrokerStatus.innerHTML = isBrokerConnected 
         ? `<span class="dash-broker-pill-status active">● Live Sync</span>` 
-        : `<span class="dash-broker-pill-status inactive">○ Offline</span>`;
+        : `<span class="dash-broker-pill-status inactive">No brokers connected</span>`;
     }
     if (elBrokerDetailsSub) {
-      elBrokerDetailsSub.innerHTML = `<span>${isBrokerConnected ? connectedBrokerName : 'No Broker Connected'}</span>`;
+      elBrokerDetailsSub.innerHTML = `<span>${isBrokerConnected ? connectedBrokerName : 'No brokers connected'}</span>`;
     }
 
     // ── RENDER RISK SNAPSHOT ──
     const elRiskPerTrade = document.getElementById('dashRiskPerTrade');
+    const elRiskPerTradeSub = document.getElementById('dashRiskPerTradeSub');
     if (elRiskPerTrade) {
-      elRiskPerTrade.textContent = `${riskPct.toFixed(1)}% · ${formatCurrency(maxRiskAmount, ts.accountCurrency)}`;
+      if (riskPct !== null && maxRiskAmount !== null) {
+        elRiskPerTrade.textContent = `${riskPct.toFixed(1)}% · ${formatCurrency(maxRiskAmount, accountCurrency)}`;
+      } else {
+        elRiskPerTrade.textContent = '—';
+      }
+    }
+    if (elRiskPerTradeSub) {
+      elRiskPerTradeSub.innerHTML = (riskPct !== null && maxRiskAmount !== null)
+        ? `<span>Enforced Maximum Stop</span>`
+        : `<span>Configure in Trading Settings</span>`;
     }
 
     // Today's Risk Used
     const todayLosses = todayTrades.filter(t => Number(t.pnl) < 0).reduce((acc, t) => acc + Math.abs(Number(t.pnl)), 0);
-    const todayRiskUsedPct = maxDailyLossAmount > 0 ? (todayLosses / maxDailyLossAmount) * 100 : 0;
+    const hasLossesToday = todayLosses > 0;
+    const todayRiskUsedPct = (maxDailyLossAmount && maxDailyLossAmount > 0) ? (todayLosses / maxDailyLossAmount) * 100 : 0;
 
     const elTodayRiskUsed = document.getElementById('dashTodayRiskUsed');
     const elTodayRiskSub = document.getElementById('dashTodayRiskSub');
     if (elTodayRiskUsed) {
-      elTodayRiskUsed.textContent = `${formatCurrency(todayLosses, ts.accountCurrency)} (${todayRiskUsedPct.toFixed(1)}%)`;
+      if (hasLossesToday) {
+        elTodayRiskUsed.textContent = `${formatCurrency(todayLosses, accountCurrency)} (${todayRiskUsedPct.toFixed(1)}%)`;
+      } else {
+        elTodayRiskUsed.textContent = '—';
+      }
     }
     if (elTodayRiskSub) {
-      elTodayRiskSub.innerHTML = `<span>${todayRiskUsedPct.toFixed(1)}% of daily allowance</span>`;
+      elTodayRiskSub.innerHTML = hasLossesToday
+        ? `<span>${todayRiskUsedPct.toFixed(1)}% of daily allowance</span>`
+        : `<span>No risk used yet</span>`;
     }
 
     // Daily Drawdown
-    const dailyDrawdownPct = totalCapital > 0 ? (todayLosses / totalCapital) * 100 : 0;
+    const dailyDrawdownPct = (totalCapital && totalCapital > 0 && hasLossesToday) ? (todayLosses / totalCapital) * 100 : 0;
     const elDailyDrawdown = document.getElementById('dashDailyDrawdown');
     const elDailyDrawdownSub = document.getElementById('dashDailyDrawdownSub');
     if (elDailyDrawdown) {
-      elDailyDrawdown.textContent = `${dailyDrawdownPct.toFixed(2)}% · ${dailyDrawdownPct < maxDailyLossPct ? 'Safe' : 'Breached'}`;
-      elDailyDrawdown.className = `dash-metric-val ${dailyDrawdownPct < maxDailyLossPct ? 'text-profit' : 'text-loss'}`;
+      if (hasLossesToday && maxDailyLossPct !== null) {
+        elDailyDrawdown.textContent = `${dailyDrawdownPct.toFixed(2)}% · ${dailyDrawdownPct < maxDailyLossPct ? 'Safe' : 'Breached'}`;
+        elDailyDrawdown.className = `dash-metric-val ${dailyDrawdownPct < maxDailyLossPct ? 'text-profit' : 'text-loss'}`;
+      } else {
+        elDailyDrawdown.textContent = '—';
+        elDailyDrawdown.className = 'dash-metric-val';
+      }
     }
     if (elDailyDrawdownSub) {
-      elDailyDrawdownSub.innerHTML = `<span>Max limit: ${maxDailyLossPct.toFixed(1)}% (${formatCurrency(maxDailyLossAmount, ts.accountCurrency)})</span>`;
+      if (maxDailyLossPct !== null && maxDailyLossAmount !== null) {
+        elDailyDrawdownSub.innerHTML = `<span>Max limit: ${maxDailyLossPct.toFixed(1)}% (${formatCurrency(maxDailyLossAmount, accountCurrency)})</span>`;
+      } else {
+        elDailyDrawdownSub.innerHTML = `<span>No drawdown data yet</span>`;
+      }
     }
 
     // Open Risk
-    const openRiskAmount = openTrades.length * maxRiskAmount;
+    const openRiskAmount = (hasOpenTrades && maxRiskAmount) ? openTrades.length * maxRiskAmount : 0;
     const elOpenRisk = document.getElementById('dashOpenRisk');
+    const elOpenRiskSub = document.getElementById('dashOpenRiskSub');
     if (elOpenRisk) {
-      elOpenRisk.textContent = formatCurrency(openRiskAmount, ts.accountCurrency);
+      elOpenRisk.textContent = (hasOpenTrades && openRiskAmount > 0) ? formatCurrency(openRiskAmount, accountCurrency) : '—';
+    }
+    if (elOpenRiskSub) {
+      elOpenRiskSub.innerHTML = hasOpenTrades ? `<span>Across active live positions</span>` : `<span>No active live positions</span>`;
     }
 
     // Capital Shield Status
-    const isShieldActive = ts.capitalShieldActive !== false;
     const elCapitalShieldBadge = document.getElementById('dashCapitalShieldBadge');
+    const elCapitalShieldSub = document.getElementById('dashCapitalShieldSub');
     if (elCapitalShieldBadge) {
-      elCapitalShieldBadge.innerHTML = isShieldActive
-        ? `<span class="dash-shield-status-tag active">● Shield Active</span>`
-        : `<span class="dash-shield-status-tag warning">○ Shield Paused</span>`;
+      if (hasCustomSettings && ts.capitalShieldActive !== undefined) {
+        elCapitalShieldBadge.innerHTML = ts.capitalShieldActive
+          ? `<span class="dash-shield-status-tag active">● Shield Active</span>`
+          : `<span class="dash-shield-status-tag warning">○ Shield Paused</span>`;
+      } else {
+        elCapitalShieldBadge.innerHTML = `<span class="dash-shield-status-tag inactive">Shield not configured</span>`;
+      }
+    }
+    if (elCapitalShieldSub) {
+      elCapitalShieldSub.innerHTML = (hasCustomSettings && ts.capitalShieldActive !== undefined)
+        ? `<span>Automatic Breaker Enabled</span>`
+        : `<span>Shield not configured</span>`;
     }
 
     // Remaining Daily Risk Limit
-    const remainingDailyRisk = Math.max(0, maxDailyLossAmount - todayLosses);
+    const remainingDailyRisk = (maxDailyLossAmount !== null) ? Math.max(0, maxDailyLossAmount - todayLosses) : null;
     const elRemainingRiskLimit = document.getElementById('dashRemainingRiskLimit');
     const elRemainingRiskSub = document.getElementById('dashRemainingRiskSub');
     if (elRemainingRiskLimit) {
-      elRemainingRiskLimit.textContent = formatCurrency(remainingDailyRisk, ts.accountCurrency);
+      if (remainingDailyRisk !== null) {
+        elRemainingRiskLimit.textContent = formatCurrency(remainingDailyRisk, accountCurrency);
+        elRemainingRiskLimit.className = 'dash-metric-val text-profit';
+      } else {
+        elRemainingRiskLimit.textContent = '—';
+        elRemainingRiskLimit.className = 'dash-metric-val';
+      }
     }
     if (elRemainingRiskSub) {
-      const remainingPct = maxDailyLossAmount > 0 ? ((remainingDailyRisk / maxDailyLossAmount) * 100).toFixed(0) : 100;
-      elRemainingRiskSub.innerHTML = `<span>${remainingPct}% daily budget available</span>`;
+      if (remainingDailyRisk !== null && maxDailyLossAmount && maxDailyLossAmount > 0) {
+        const remainingPct = ((remainingDailyRisk / maxDailyLossAmount) * 100).toFixed(0);
+        elRemainingRiskSub.innerHTML = `<span>${remainingPct}% daily budget available</span>`;
+      } else {
+        elRemainingRiskSub.innerHTML = `<span>Configure daily risk limit</span>`;
+      }
     }
 
     // Guardrail Bar
@@ -11093,25 +11150,38 @@ document.addEventListener('DOMContentLoaded', function() {
     const bufferPct = Math.max(0, 100 - todayRiskUsedPct);
 
     if (elGuardrailDesc) {
-      elGuardrailDesc.textContent = `Loss cap: ${maxDailyLossPct.toFixed(1)}% (${formatCurrency(maxDailyLossAmount, ts.accountCurrency)}). System restricts trade execution if breached.`;
+      if (maxDailyLossPct !== null && maxDailyLossAmount !== null) {
+        elGuardrailDesc.textContent = `Loss cap: ${maxDailyLossPct.toFixed(1)}% (${formatCurrency(maxDailyLossAmount, accountCurrency)}). System restricts trade execution if breached.`;
+      } else {
+        elGuardrailDesc.textContent = 'Loss cap not configured. Configure parameters in Trading Settings.';
+      }
     }
     if (elGuardrailStatusText) {
-      elGuardrailStatusText.textContent = `${dailyDrawdownPct.toFixed(1)}% Loss Today · ${dailyDrawdownPct < maxDailyLossPct ? 'Safe' : 'Breached'}`;
-      elGuardrailStatusText.className = `dash-guardrail-status ${dailyDrawdownPct < maxDailyLossPct ? 'profit' : 'loss'}`;
+      if (hasLossesToday && maxDailyLossPct !== null) {
+        elGuardrailStatusText.textContent = `${dailyDrawdownPct.toFixed(1)}% Loss Today · ${dailyDrawdownPct < maxDailyLossPct ? 'Safe' : 'Breached'}`;
+        elGuardrailStatusText.className = `dash-guardrail-status ${dailyDrawdownPct < maxDailyLossPct ? 'profit' : 'loss'}`;
+      } else {
+        elGuardrailStatusText.textContent = 'No Drawdown Data';
+        elGuardrailStatusText.className = 'dash-guardrail-status';
+      }
     }
     if (elGuardrailBarFill) {
-      elGuardrailBarFill.style.width = `${bufferPct}%`;
-      elGuardrailBarFill.style.background = bufferPct > 30 ? 'linear-gradient(90deg, #10b981, #3b82f6)' : 'linear-gradient(90deg, #f59e0b, #ef4444)';
+      if (maxDailyLossAmount !== null) {
+        elGuardrailBarFill.style.width = `${bufferPct}%`;
+        elGuardrailBarFill.style.background = bufferPct > 30 ? 'linear-gradient(90deg, #10b981, #3b82f6)' : 'linear-gradient(90deg, #f59e0b, #ef4444)';
+      } else {
+        elGuardrailBarFill.style.width = '0%';
+      }
     }
 
-    // ── RENDER RECENT ACTIVITY (3-5 EXECUTED TRADES) ──
+    // ── RENDER RECENT ACTIVITY (ACTUAL BROKER-CONFIRMED EXECUTIONS ONLY) ──
     const tbody = document.getElementById('dashRecentTradesTbody');
     if (tbody) {
       const recentTrades = trades.slice(0, 5);
       if (recentTrades.length === 0) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="6" class="dash-empty-trades">
+            <td colspan="6" class="dash-empty-trades" style="text-align:center; padding:32px 16px; color:var(--text-muted);">
               No executed trades recorded yet. Log your first trade in the <a href="#journal" style="color:var(--accent);">Trade Journal</a> or connect your broker.
             </td>
           </tr>
@@ -11122,11 +11192,11 @@ document.addEventListener('DOMContentLoaded', function() {
           const sideClass = side.includes('BUY') ? 'buy' : 'sell';
           const pnlNum = Number(t.pnl) || 0;
           const pnlClass = pnlNum >= 0 ? 'text-profit' : 'text-loss';
-          const pnlFormatted = `${pnlNum >= 0 ? '+' : ''}${formatCurrency(pnlNum, ts.accountCurrency)}`;
+          const pnlFormatted = `${pnlNum >= 0 ? '+' : ''}${formatCurrency(pnlNum, accountCurrency)}`;
           
           let entryExitStr = '-';
           if (t.entryPrice) {
-            entryExitStr = `${formatCurrency(t.entryPrice, ts.accountCurrency)} → ${t.exitPrice ? formatCurrency(t.exitPrice, ts.accountCurrency) : 'Open'}`;
+            entryExitStr = `${formatCurrency(t.entryPrice, accountCurrency)} → ${t.exitPrice ? formatCurrency(t.exitPrice, accountCurrency) : 'Open'}`;
           }
 
           const rMultiple = t.rMultiple || (pnlNum >= 0 ? `+${(pnlNum / (maxRiskAmount || 5000)).toFixed(1)}R` : `-${(Math.abs(pnlNum) / (maxRiskAmount || 5000)).toFixed(1)}R`);

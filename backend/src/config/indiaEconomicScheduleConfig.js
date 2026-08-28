@@ -34,8 +34,9 @@ export const INDIA_ECONOMIC_EVENT_CONFIGS = [
     },
     // Official Advance Release Calendar (ARC) overrides (MoSPI)
     officialDates: [
-      { date: '2026-08-12', time: '17:30:00', period: 'Jul 2026' },
-      { date: '2026-09-14', time: '17:30:00', period: 'Aug 2026' }, // 12th is Saturday -> Monday 14th
+      { date: '2026-07-12', time: '17:30:00', period: 'Jun 2026', actual: 5.08, previous: 4.75 },
+      { date: '2026-08-12', time: '17:30:00', period: 'Jul 2026', actual: 3.54, previous: 5.08 },
+      { date: '2026-09-14', time: '17:30:00', period: 'Aug 2026', previous: 3.54 }, // 12th is Saturday -> Monday 14th
       { date: '2026-10-12', time: '17:30:00', period: 'Sep 2026' },
       { date: '2026-11-12', time: '17:30:00', period: 'Oct 2026' },
       { date: '2026-12-14', time: '17:30:00', period: 'Nov 2026' }, // 12th is Saturday -> Monday 14th
@@ -62,7 +63,8 @@ export const INDIA_ECONOMIC_EVENT_CONFIGS = [
     },
     // Official MoSPI Advance Release Calendar: IIP Quick Estimates released on 28th of every month
     officialDates: [
-      { date: '2026-08-28', time: '17:30:00', period: 'Jun 2026' },
+      { date: '2026-07-28', time: '17:30:00', period: 'May 2026', actual: 5.9, previous: 5.0 },
+      { date: '2026-08-28', time: '17:30:00', period: 'Jun 2026', previous: 5.9 },
       { date: '2026-09-28', time: '17:30:00', period: 'Jul 2026' },
       { date: '2026-10-28', time: '17:30:00', period: 'Aug 2026' },
       { date: '2026-11-30', time: '17:30:00', period: 'Sep 2026' }, // 28th is Saturday -> Monday 30th
@@ -90,8 +92,9 @@ export const INDIA_ECONOMIC_EVENT_CONFIGS = [
     },
     // Official DPIIT / Ministry of Commerce Calendar: 14th of each month @ 12:00 IST
     officialDates: [
-      { date: '2026-08-14', time: '12:00:00', period: 'Jul 2026' },
-      { date: '2026-09-14', time: '12:00:00', period: 'Aug 2026' },
+      { date: '2026-07-14', time: '12:00:00', period: 'Jun 2026', actual: 3.36, previous: 2.61 },
+      { date: '2026-08-14', time: '12:00:00', period: 'Jul 2026', actual: 2.04, previous: 3.36 },
+      { date: '2026-09-14', time: '12:00:00', period: 'Aug 2026', previous: 2.04 },
       { date: '2026-10-14', time: '12:00:00', period: 'Sep 2026' },
       { date: '2026-11-16', time: '12:00:00', period: 'Oct 2026' }, // 14th is Saturday -> Monday 16th
       { date: '2026-12-14', time: '12:00:00', period: 'Nov 2026' },
@@ -116,8 +119,9 @@ export const INDIA_ECONOMIC_EVENT_CONFIGS = [
     },
     // Official RBI MPC Schedule
     officialDates: [
-      { date: '2026-08-07', time: '10:00:00', period: 'Aug 2026 MPC' },
-      { date: '2026-10-08', time: '10:00:00', period: 'Oct 2026 MPC' },
+      { date: '2026-06-07', time: '10:00:00', period: 'Jun 2026 MPC', actual: 6.50, previous: 6.50 },
+      { date: '2026-08-07', time: '10:00:00', period: 'Aug 2026 MPC', actual: 6.50, previous: 6.50 },
+      { date: '2026-10-08', time: '10:00:00', period: 'Oct 2026 MPC', previous: 6.50 },
       { date: '2026-12-04', time: '10:00:00', period: 'Dec 2026 MPC' },
       { date: '2027-02-05', time: '10:00:00', period: 'Feb 2027 MPC' },
       { date: '2027-04-09', time: '10:00:00', period: 'Apr 2027 MPC' },
@@ -141,7 +145,8 @@ export const INDIA_ECONOMIC_EVENT_CONFIGS = [
     },
     // Official MoSPI Quarterly GDP Release Schedule (NSO)
     officialDates: [
-      { date: '2026-08-31', time: '17:30:00', period: 'Q1 FY27 (Apr-Jun 2026)' },
+      { date: '2026-05-29', time: '17:30:00', period: 'Q4 FY26 (Jan-Mar 2026)', actual: 7.8, previous: 8.4 },
+      { date: '2026-08-31', time: '17:30:00', period: 'Q1 FY27 (Apr-Jun 2026)', previous: 7.8 },
       { date: '2026-11-30', time: '17:30:00', period: 'Q2 FY27 (Jul-Sep 2026)' },
       { date: '2027-02-26', time: '17:30:00', period: 'Q3 FY27 (Oct-Dec 2026)' },
       { date: '2027-05-31', time: '17:30:00', period: 'Q4 FY27 (Jan-Mar 2027)' },

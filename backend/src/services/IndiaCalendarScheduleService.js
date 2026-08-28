@@ -23,6 +23,7 @@
  */
 
 import { INDIA_ECONOMIC_EVENT_CONFIGS } from '../config/indiaEconomicScheduleConfig.js';
+import { enrichEventsWithPreviousReleases } from '../utils/economicReleaseEnricher.js';
 
 class IndiaCalendarScheduleService {
   constructor(configs = INDIA_ECONOMIC_EVENT_CONFIGS) {
@@ -207,6 +208,9 @@ class IndiaCalendarScheduleService {
       const dateTimeB = `${b.event_date}T${b.event_time}`;
       return dateTimeA.localeCompare(dateTimeB);
     });
+
+    // Dynamically link and enrich with previous official releases
+    enrichEventsWithPreviousReleases(allEvents);
 
     const confirmedCount = allEvents.filter(e => e.schedule_status === 'confirmed').length;
     const provisionalCount = allEvents.filter(e => e.schedule_status === 'provisional').length;

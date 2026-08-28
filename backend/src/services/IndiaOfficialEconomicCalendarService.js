@@ -20,6 +20,7 @@
 import axios from 'axios';
 import { supabaseEconomicCalendarService } from './SupabaseEconomicCalendarService.js';
 import { INDIA_ECONOMIC_EVENT_CONFIGS } from '../config/indiaEconomicScheduleConfig.js';
+import { enrichEventsWithPreviousReleases } from '../utils/economicReleaseEnricher.js';
 
 export const OFFICIAL_SOURCE_WHITELIST = [
   'rbi.org.in',
@@ -464,6 +465,18 @@ class IndiaOfficialEconomicCalendarService {
     if (allEvents.length === 0) {
       allEvents = this.getOfficialAdvanceCalendarEvents();
     }
+
+    // Dynamically link and enrich with previous official releases
+    enrichEventsWithPreviousReleases(allEvents);
+
+    // Format any newly enriched rawPrevious values
+    allEvents.forEach(ev => {
+      if ((ev.previous === null || ev.previous === undefined || ev.previous === '' || ev.previous === '—') && ev.rawPrevious) {
+        ev.previous = this.formatMetricValue(ev.rawPrevious, ev.unit);
+      } else if (ev.previous && ev.previous !== '—' && ev.unit && !String(ev.previous).includes(ev.unit)) {
+        ev.previous = this.formatMetricValue(ev.previous, ev.unit);
+      }
+    });
 
     // Apply date range filters
     let filteredEvents = allEvents.filter(ev => {

@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { indiaCalendarScheduleService } from './IndiaCalendarScheduleService.js';
+import { enrichEventsWithPreviousReleases } from '../utils/economicReleaseEnricher.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -80,7 +81,9 @@ class SupabaseEconomicCalendarService {
             throw error;
         }
 
-        return data || [];
+        const events = data || [];
+        enrichEventsWithPreviousReleases(events);
+        return events;
     }
 
     /**

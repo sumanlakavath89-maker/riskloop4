@@ -17484,6 +17484,17 @@ body.authenticated:not(.landing-mode) .landing-center-nav {
 }
 
 /* Currency Switcher Dropdown */
+.portfolio-toolbar-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.portfolio-currency-dropdown {
+  position: relative;
+}
+
 .portfolio-curr-btn {
   display: inline-flex;
   align-items: center;
@@ -17505,8 +17516,27 @@ body.authenticated:not(.landing-mode) .landing-center-nav {
   border-color: rgba(224, 169, 78, 0.4);
 }
 
+.portfolio-currency-menu {
+  position: absolute !important;
+  right: 0 !important;
+  left: auto !important;
+  top: calc(100% + 6px) !important;
+  min-width: 215px !important;
+  max-width: min(260px, calc(100vw - 32px)) !important;
+  background: #13182b !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 12px !important;
+  padding: 6px !important;
+  box-shadow: 0 14px 35px rgba(0, 0, 0, 0.65) !important;
+  z-index: 1000 !important;
+  transform-origin: top right !important;
+}
+
 .portfolio-currency-dropdown.dropdown-open .portfolio-currency-menu {
   display: block !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: translateY(0) !important;
 }
 
 .portfolio-curr-item {

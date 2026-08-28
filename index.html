@@ -7657,7 +7657,7 @@
           </div>
 
           <!-- Right: Currency Switcher Dropdown (USD, INR, EUR, GBP, JPY, AED, CAD) -->
-          <div class="portfolio-toolbar-right" style="display:flex;align-items:center;gap:10px;">
+          <div class="portfolio-toolbar-right" style="display:flex;align-items:center;gap:10px;margin-left:auto;">
             <div class="nav-dropdown portfolio-currency-dropdown" id="portfolioCurrencyDropdown"
               style="position:relative;">
               <button class="portfolio-curr-btn" id="portfolioCurrencyBtn" type="button"
@@ -7672,7 +7672,7 @@
               </button>
 
               <div class="dropdown-menu portfolio-currency-menu" id="portfolioCurrencyMenu"
-                style="position:absolute;right:0;top:calc(100% + 6px);min-width:215px;background:#13182b;border:1px solid rgba(255,255,255,0.12);border-radius:12px;padding:6px;box-shadow:0 14px 35px rgba(0,0,0,0.65);z-index:100;display:none;">
+                style="position:absolute;right:0 !important;left:auto !important;top:calc(100% + 6px);min-width:215px;max-width:min(260px, calc(100vw - 32px));background:#13182b;border:1px solid rgba(255,255,255,0.12);border-radius:12px;padding:6px;box-shadow:0 14px 35px rgba(0,0,0,0.65);z-index:1000;display:none;">
                 <div
                   style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);padding:6px 10px 4px;font-weight:700;">
                   Display Currency

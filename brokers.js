@@ -148,6 +148,22 @@
         { id: 'yotp', label: 'Year of Birth (YOB) or TOTP', placeholder: 'YYYY or TOTP', type: 'password', required: true }
       ]
     },
+    'zerodha': {
+      id: 'zerodha',
+      name: 'Zerodha Kite',
+      category: 'indian',
+      marketTag: 'NSE • BSE • MCX',
+      logo: 'logos/zerodha.png',
+      initial: 'Z',
+      bg: '#f59e0b',
+      color: '#101322',
+      desc: 'Kite Connect v3 OAuth API for high-frequency algorithmic and discretionary trade syncing.',
+      authType: 'oauth',
+      fields: [
+        { id: 'api_key', label: 'Kite API Key', placeholder: 'Enter your Kite API key', type: 'text', required: true },
+        { id: 'api_secret', label: 'API Secret', placeholder: 'Enter your Kite API secret', type: 'password', required: true }
+      ]
+    },
     'mt5': {
       id: 'mt5',
       name: 'MetaTrader 5',
@@ -164,6 +180,138 @@
         { id: 'mt5_password', label: 'Investor / Trader Password', placeholder: 'Trading password', type: 'password', required: true },
         { id: 'mt5_server', label: 'Server Name', placeholder: 'e.g. ICMarketsSC-Live02, Pepperstone-Live', type: 'text', required: true },
         { id: 'bridge_secret', label: 'Bridge Secret Key (x-mt5-bridge-secret)', placeholder: 'Configured in backend .env', type: 'password', required: false }
+      ]
+    },
+    'vantage': {
+      id: 'vantage',
+      name: 'Vantage',
+      category: 'forex',
+      marketTag: 'Global Forex & CFDs',
+      logo: 'logos/vantage.png',
+      initial: 'V',
+      bg: '#0284c7',
+      color: '#fff',
+      desc: 'Vantage Markets MT4/MT5 bridge with direct execution logs and real-time CFD fills.',
+      authType: 'mt5',
+      fields: [
+        { id: 'mt5_login', label: 'Account Number', placeholder: 'e.g. 802194', type: 'text', required: true },
+        { id: 'mt5_password', label: 'Password', placeholder: 'Account password', type: 'password', required: true },
+        { id: 'mt5_server', label: 'Server Name', placeholder: 'VantageInternational-Live', type: 'text', required: true }
+      ]
+    },
+    'exness': {
+      id: 'exness',
+      name: 'Exness',
+      category: 'forex',
+      marketTag: 'Forex & Commodities',
+      logo: 'logos/exness.png',
+      initial: 'EX',
+      bg: '#fbbf24',
+      color: '#101322',
+      desc: 'Exness real-time trading feed via MT5/MT4 bridge with tick-level ledger verification.',
+      authType: 'mt5',
+      fields: [
+        { id: 'mt5_login', label: 'Exness Account ID', placeholder: 'e.g. 1928401', type: 'text', required: true },
+        { id: 'mt5_password', label: 'Investor Password', placeholder: 'Trading password', type: 'password', required: true },
+        { id: 'mt5_server', label: 'Server Name', placeholder: 'Exness-Real12', type: 'text', required: true }
+      ]
+    },
+    'icmarkets': {
+      id: 'icmarkets',
+      name: 'IC Markets',
+      category: 'forex',
+      marketTag: 'Raw Spread Forex',
+      logo: 'logos/icmarkets.png',
+      initial: 'IC',
+      bg: '#059669',
+      color: '#fff',
+      desc: 'Raw Spread ultra-low latency execution capture for global Forex and index CFDs.',
+      authType: 'mt5',
+      fields: [
+        { id: 'mt5_login', label: 'Account Number', placeholder: 'e.g. 509218', type: 'text', required: true },
+        { id: 'mt5_password', label: 'Investor Password', placeholder: 'Account password', type: 'password', required: true },
+        { id: 'mt5_server', label: 'Server Name', placeholder: 'ICMarketsSC-Live02', type: 'text', required: true }
+      ]
+    },
+    'pepperstone': {
+      id: 'pepperstone',
+      name: 'Pepperstone',
+      category: 'forex',
+      marketTag: 'Multi-Asset Broker',
+      logo: 'logos/pepperstone.png',
+      initial: 'PS',
+      bg: '#ea580c',
+      color: '#fff',
+      desc: 'Pepperstone Razor account connection with instant order sync and spread tracking.',
+      authType: 'mt5',
+      fields: [
+        { id: 'mt5_login', label: 'Account Number', placeholder: 'e.g. 709124', type: 'text', required: true },
+        { id: 'mt5_password', label: 'Password', placeholder: 'Account password', type: 'password', required: true },
+        { id: 'mt5_server', label: 'Server Name', placeholder: 'Pepperstone-Live01', type: 'text', required: true }
+      ]
+    },
+    'binance': {
+      id: 'binance',
+      name: 'Binance',
+      category: 'crypto',
+      marketTag: 'Global Crypto Exchange',
+      logo: 'logos/binance.png',
+      initial: 'BN',
+      bg: '#f0b90b',
+      color: '#101322',
+      desc: 'Binance Spot & USD-M Futures API with real-time websocket fill streams.',
+      authType: 'credentials',
+      fields: [
+        { id: 'api_key', label: 'Binance API Key', placeholder: 'Paste your API key', type: 'text', required: true },
+        { id: 'api_secret', label: 'API Secret', placeholder: 'Paste your API secret', type: 'password', required: true }
+      ]
+    },
+    'deltaexchange': {
+      id: 'deltaexchange',
+      name: 'Delta Exchange',
+      category: 'crypto',
+      marketTag: 'Crypto Derivatives & Options',
+      logo: 'logos/delta.png',
+      initial: 'DE',
+      bg: '#0052ff',
+      color: '#fff',
+      desc: 'Delta Exchange India F&O API with options strike ledger and margin sync.',
+      authType: 'credentials',
+      fields: [
+        { id: 'api_key', label: 'API Key', placeholder: 'Delta API key', type: 'text', required: true },
+        { id: 'api_secret', label: 'API Secret', placeholder: 'Delta API secret', type: 'password', required: true }
+      ]
+    },
+    'bybit': {
+      id: 'bybit',
+      name: 'Bybit',
+      category: 'crypto',
+      marketTag: 'Crypto Futures & Options',
+      logo: 'logos/bybit.png',
+      initial: 'BY',
+      bg: '#f7a600',
+      color: '#101322',
+      desc: 'Bybit Unified Trading Account API for real-time crypto derivatives syncing.',
+      authType: 'credentials',
+      fields: [
+        { id: 'api_key', label: 'Bybit API Key', placeholder: 'Enter API key', type: 'text', required: true },
+        { id: 'api_secret', label: 'API Secret', placeholder: 'Enter API secret', type: 'password', required: true }
+      ]
+    },
+    'coindcx': {
+      id: 'coindcx',
+      name: 'CoinDCX',
+      category: 'crypto',
+      marketTag: 'Indian Crypto Exchange',
+      logo: 'logos/coindcx.png',
+      initial: 'CD',
+      bg: '#1877f2',
+      color: '#fff',
+      desc: 'CoinDCX Pro API for Indian INR-crypto pairs and futures trading tracking.',
+      authType: 'credentials',
+      fields: [
+        { id: 'api_key', label: 'CoinDCX API Key', placeholder: 'Enter API key', type: 'text', required: true },
+        { id: 'api_secret', label: 'API Secret', placeholder: 'Enter API secret', type: 'password', required: true }
       ]
     }
   };
@@ -269,8 +417,8 @@
             </svg>
           </div>
           <h3 class="bk-empty-title">No Connected Brokers</h3>
-          <p class="bk-empty-desc">Connect your Angel One, Dhan, FYERS or MetaTrader 5 account below to automatically import your verified trade executions.</p>
-          <button class="jbtn-primary jbtn-sm bk-empty-action" onclick="window.openBrokerConnectModal()">+ Connect Your First Broker</button>
+          <p class="bk-empty-desc">Connect your Angel One, Dhan, FYERS, Upstox or MetaTrader 5 account below to automatically import your verified trade executions.</p>
+          <button class="jbtn-primary jbtn-sm bk-empty-action" onclick="window.openAllBrokersModal()">+ Connect Your First Broker</button>
         </div>
       `;
       return;
@@ -699,7 +847,13 @@
 
     // Top Connect Button
     if (els.topConnectBtn) {
-      els.topConnectBtn.onclick = () => openBrokerConnectModal();
+      els.topConnectBtn.onclick = () => {
+        if (typeof window.openAllBrokersModal === 'function') {
+          window.openAllBrokersModal();
+        } else {
+          openBrokerConnectModal();
+        }
+      };
     }
 
     // Top Refresh Button

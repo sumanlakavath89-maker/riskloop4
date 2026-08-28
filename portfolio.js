@@ -1434,8 +1434,312 @@
     updatePortfolioUI();
   }
 
-  /* ── All Brokers Modal ── */
+  /* ── All Supported Brokers & Exchanges Catalog ── */
+  const SUPPORTED_BROKERS_CATALOG = [
+    // Indian Market (NSE/BSE)
+    {
+      id: 'angelone',
+      name: 'Angel One',
+      category: 'indian',
+      marketTag: 'NSE • BSE • NFO • MCX',
+      sub: 'SmartAPI v2',
+      bg: 'linear-gradient(135deg,#ff416c,#ff4b2b)',
+      color: '#fff',
+      initial: 'A',
+      logo: 'logos/angleone.png'
+    },
+    {
+      id: 'zerodha',
+      name: 'Zerodha Kite',
+      category: 'indian',
+      marketTag: 'NSE • BSE • MCX',
+      sub: 'Kite Connect v3',
+      bg: 'linear-gradient(135deg,#e0a94e,#f59e0b)',
+      color: '#101322',
+      initial: 'Z',
+      logo: 'logos/zerodha.png'
+    },
+    {
+      id: 'dhan',
+      name: 'Dhan',
+      category: 'indian',
+      marketTag: 'NSE • BSE • MCX',
+      sub: 'Direct Data API',
+      bg: 'linear-gradient(135deg,#00b386,#008f6b)',
+      color: '#fff',
+      initial: 'D',
+      logo: 'logos/dhan.png'
+    },
+    {
+      id: 'upstox',
+      name: 'Upstox',
+      category: 'indian',
+      marketTag: 'NSE • BSE • MCX',
+      sub: 'Developer API v2',
+      bg: 'linear-gradient(135deg,#7928ca,#4338ca)',
+      color: '#fff',
+      initial: 'U',
+      logo: 'logos/upstocks.png'
+    },
+    {
+      id: 'fyers',
+      name: 'FYERS',
+      category: 'indian',
+      marketTag: 'NSE • BSE • MCX',
+      sub: 'API v3 OAuth',
+      bg: 'linear-gradient(135deg,#2b6cb0,#1a365d)',
+      color: '#fff',
+      initial: 'FY',
+      logo: 'logos/fyers.png'
+    },
+    {
+      id: 'kotakneo',
+      name: 'Kotak Neo',
+      category: 'indian',
+      marketTag: 'Neo Trade API v2',
+      sub: 'Neo Trade API',
+      bg: 'linear-gradient(135deg,#ed1c24,#b91c1c)',
+      color: '#fff',
+      initial: 'KN',
+      logo: 'logos/kotak neo.png'
+    },
+    {
+      id: 'shoonya',
+      name: 'Shoonya',
+      category: 'indian',
+      marketTag: 'Finvasia Zero-Brokerage',
+      sub: 'Native Trading API',
+      bg: 'linear-gradient(135deg,#0047bb,#002b80)',
+      color: '#fff',
+      initial: 'SH',
+      logo: 'logos/shoonya.png'
+    },
+    {
+      id: 'aliceblue',
+      name: 'Alice Blue',
+      category: 'indian',
+      marketTag: 'ANT Trade API',
+      sub: 'ANT API v2',
+      bg: 'linear-gradient(135deg,#0099ff,#0066cc)',
+      color: '#fff',
+      initial: 'AB',
+      logo: 'logos/aliceblue.png'
+    },
+    {
+      id: 'samco',
+      name: 'SAMCO',
+      category: 'indian',
+      marketTag: 'TradeAPI • Giga Trading',
+      sub: 'SAMCO TradeAPI',
+      bg: 'linear-gradient(135deg,#e31b23,#990000)',
+      color: '#fff',
+      initial: 'SM',
+      logo: 'logos/samco.png'
+    },
+    // Forex & CFDs
+    {
+      id: 'mt5',
+      name: 'MetaTrader 5',
+      category: 'forex',
+      marketTag: 'Forex • Gold • Indices • CFD',
+      sub: 'MQL5 TCP Bridge',
+      bg: 'linear-gradient(135deg,#1c4e80,#0f2b48)',
+      color: '#fff',
+      initial: 'MT',
+      logo: 'logos/MetaTrader_5.png'
+    },
+    {
+      id: 'vantage',
+      name: 'Vantage',
+      category: 'forex',
+      marketTag: 'Global Forex & CFDs',
+      sub: 'Forex & CFDs',
+      bg: 'linear-gradient(135deg,#0284c7,#0369a1)',
+      color: '#fff',
+      initial: 'V',
+      logo: 'logos/vantage.png'
+    },
+    {
+      id: 'exness',
+      name: 'Exness',
+      category: 'forex',
+      marketTag: 'Forex & Commodities',
+      sub: 'MT4/MT5 Bridge',
+      bg: 'linear-gradient(135deg,#fbbf24,#d97706)',
+      color: '#101322',
+      initial: 'EX',
+      logo: 'logos/exness.png'
+    },
+    {
+      id: 'icmarkets',
+      name: 'IC Markets',
+      category: 'forex',
+      marketTag: 'Raw Spread Forex',
+      sub: 'cTrader / MT5',
+      bg: 'linear-gradient(135deg,#059669,#047857)',
+      color: '#fff',
+      initial: 'IC',
+      logo: 'logos/icmarkets.png'
+    },
+    {
+      id: 'pepperstone',
+      name: 'Pepperstone',
+      category: 'forex',
+      marketTag: 'Multi-Asset Broker',
+      sub: 'Razor Spreads / MT5',
+      bg: 'linear-gradient(135deg,#ea580c,#c2410c)',
+      color: '#fff',
+      initial: 'PS',
+      logo: 'logos/pepperstone.png'
+    },
+    // Crypto Exchanges
+    {
+      id: 'binance',
+      name: 'Binance',
+      category: 'crypto',
+      marketTag: 'Global Crypto Exchange',
+      sub: 'Spot & Futures API',
+      bg: 'linear-gradient(135deg,#f0b90b,#b48805)',
+      color: '#101322',
+      initial: 'BN',
+      logo: 'logos/binance.png'
+    },
+    {
+      id: 'deltaexchange',
+      name: 'Delta Exchange',
+      category: 'crypto',
+      marketTag: 'Crypto Derivatives & Options',
+      sub: 'Crypto F&O API',
+      bg: 'linear-gradient(135deg,#0052ff,#0039b3)',
+      color: '#fff',
+      initial: 'DE',
+      logo: 'logos/delta.png'
+    },
+    {
+      id: 'bybit',
+      name: 'Bybit',
+      category: 'crypto',
+      marketTag: 'Crypto Futures & Options',
+      sub: 'Unified Trading API',
+      bg: 'linear-gradient(135deg,#f7a600,#c68500)',
+      color: '#101322',
+      initial: 'BY',
+      logo: 'logos/bybit.png'
+    },
+    {
+      id: 'coindcx',
+      name: 'CoinDCX',
+      category: 'crypto',
+      marketTag: 'Indian Crypto Exchange',
+      sub: 'Spot & Margin API',
+      bg: 'linear-gradient(135deg,#1877f2,#0d5cb6)',
+      color: '#fff',
+      initial: 'CD',
+      logo: 'logos/coindcx.png'
+    }
+  ];
+
   let _activeBrokerModalCat = 'all';
+
+  function getConnectedBrokersMap() {
+    const map = {};
+    try {
+      const list = JSON.parse(localStorage.getItem('riskloop_connected_brokers') || '[]');
+      if (Array.isArray(list)) {
+        list.forEach(b => {
+          if (b && b.connected !== false) {
+            if (b.id) map[b.id.toLowerCase()] = b;
+            if (b.name) map[b.name.toLowerCase()] = b;
+            if (b.brokerName) map[b.brokerName.toLowerCase()] = b;
+            const norm = (b.name || b.id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+            if (norm) map[norm] = b;
+          }
+        });
+      }
+      const single = JSON.parse(localStorage.getItem('riskloop_connected_broker') || 'null');
+      if (single && single.connected) {
+        if (single.id) map[single.id.toLowerCase()] = single;
+        if (single.name) map[single.name.toLowerCase()] = single;
+        if (single.brokerName) map[single.brokerName.toLowerCase()] = single;
+      }
+    } catch (e) {}
+    return map;
+  }
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function renderAllBrokersGrid() {
+    const grid = document.getElementById('allBrokersGrid');
+    if (!grid) return;
+
+    const connMap = getConnectedBrokersMap();
+
+    grid.innerHTML = SUPPORTED_BROKERS_CATALOG.map(broker => {
+      const isConnected = !!(
+        connMap[broker.id.toLowerCase()] ||
+        connMap[broker.name.toLowerCase()] ||
+        connMap[broker.name.toLowerCase().replace(/[^a-z0-9]/g, '')]
+      );
+
+      return `
+        <div class="broker-catalog-card ${isConnected ? 'broker-card-connected' : ''}" 
+          data-cat="${broker.category}" 
+          data-id="${broker.id}"
+          data-name="${escapeHtml(broker.name.toLowerCase())}"
+          onclick="window.handleBrokerCatalogCardClick('${broker.id}', '${broker.category}', '${escapeHtml(broker.name)}', ${isConnected})"
+          style="padding:14px 16px;background:#0d1120;border:1px solid ${isConnected ? 'rgba(72,183,154,0.35)' : 'rgba(255,255,255,0.08)'};border-radius:14px;cursor:pointer;display:flex;align-items:center;gap:12px;transition:all 0.2s cubic-bezier(0.16,1,0.3,1);position:relative;">
+          <div style="width:34px;height:34px;border-radius:9px;background:${broker.bg};color:${broker.color};font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,0.3);">
+            ${broker.initial}
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+              <strong style="font-size:13.5px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(broker.name)}</strong>
+              ${isConnected ? `
+                <span style="font-size:10px;font-weight:600;padding:2px 7px;background:rgba(72,183,154,0.15);color:#48B79A;border:1px solid rgba(72,183,154,0.3);border-radius:6px;display:inline-flex;align-items:center;gap:4px;flex-shrink:0;">
+                  <span style="width:5px;height:5px;border-radius:50%;background:#48B79A;"></span> Connected
+                </span>
+              ` : `
+                <button type="button" class="bk-modal-connect-btn" onclick="event.stopPropagation(); window.handleBrokerCatalogCardClick('${broker.id}', '${broker.category}', '${escapeHtml(broker.name)}', false);" style="font-size:11px;font-weight:700;padding:4px 11px;background:var(--accent,#E0A94E);color:#101322;border:none;border-radius:6px;cursor:pointer;flex-shrink:0;transition:all 0.15s ease;">
+                  Connect
+                </button>
+              `}
+            </div>
+            <span style="font-size:11px;color:var(--text-muted);display:block;margin-top:2px;">${escapeHtml(broker.sub || broker.marketTag)}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    filterAllBrokersModal();
+  }
+
+  function handleBrokerCatalogCardClick(brokerId, category, brokerName, isConnected) {
+    if (isConnected) {
+      if (typeof window.switchPortfolioBroker === 'function') {
+        const marketType = category === 'indian' ? 'india' : category === 'forex' ? 'forex' : 'combined';
+        window.switchPortfolioBroker(marketType, brokerName);
+      }
+      closeAllBrokersModal();
+      if (typeof window.openManageBrokerModal === 'function') {
+        const activePage = document.querySelector('.page-container:not([hidden])')?.id;
+        if (activePage === 'brokersPage') {
+          window.openManageBrokerModal(brokerId);
+        }
+      }
+    } else {
+      closeAllBrokersModal();
+      if (typeof window.openBrokerConnectModal === 'function') {
+        window.openBrokerConnectModal(brokerId);
+      }
+    }
+  }
 
   function openAllBrokersModal() {
     const pbDropdown = document.getElementById('portfolioBrokerDropdown');
@@ -1444,6 +1748,15 @@
     const modal = document.getElementById('allBrokersModal');
     if (modal) {
       modal.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+      renderAllBrokersGrid();
+      const searchInput = document.getElementById('allBrokersSearchInput');
+      if (searchInput) {
+        searchInput.value = '';
+        if (typeof searchInput.focus === 'function') {
+          setTimeout(() => searchInput.focus(), 60);
+        }
+      }
     }
   }
 
@@ -1451,6 +1764,7 @@
     const modal = document.getElementById('allBrokersModal');
     if (modal) {
       modal.style.display = 'none';
+      document.body.style.overflow = '';
     }
   }
 
@@ -1487,10 +1801,31 @@
     });
   }
 
+  // Bind Backdrop Click and Escape Key listener
+  function initAllBrokersModalEvents() {
+    const modal = document.getElementById('allBrokersModal');
+    if (modal && typeof modal.addEventListener === 'function') {
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          closeAllBrokersModal();
+        }
+      });
+    }
+    if (typeof window.addEventListener === 'function') {
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          closeAllBrokersModal();
+        }
+      });
+    }
+  }
+
   window.openAllBrokersModal = openAllBrokersModal;
   window.closeAllBrokersModal = closeAllBrokersModal;
   window.setBrokerModalCat = setBrokerModalCat;
   window.filterAllBrokersModal = filterAllBrokersModal;
+  window.renderAllBrokersGrid = renderAllBrokersGrid;
+  window.handleBrokerCatalogCardClick = handleBrokerCatalogCardClick;
   window.openBrokerModal = openAllBrokersModal;
 
   window.initPortfolioPage = initPortfolioPage;
@@ -1498,8 +1833,12 @@
   window.updatePortfolioUI = updatePortfolioUI;
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initPortfolioPage);
+    document.addEventListener('DOMContentLoaded', () => {
+      initPortfolioPage();
+      initAllBrokersModalEvents();
+    });
   } else {
     initPortfolioPage();
+    initAllBrokersModalEvents();
   }
 }());

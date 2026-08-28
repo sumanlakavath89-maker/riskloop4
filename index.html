@@ -7493,7 +7493,7 @@
           <!-- Left: Connected Broker Dropdown -->
           <div class="nav-dropdown portfolio-broker-dropdown" id="portfolioBrokerDropdown">
             <button class="nav-tab nav-tab-dropdown portfolio-broker-dropdown-btn" id="portfolioBrokerDropdownBtn"
-              type="button">
+              type="button" onclick="if(window.togglePortfolioDropdown)window.togglePortfolioDropdown('portfolioBrokerDropdown',event);else{event.stopPropagation();document.getElementById('portfolioBrokerDropdown')?.classList.toggle('dropdown-open');}">
               <span class="p-dot p-dot-green"></span>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                 stroke-linecap="round" stroke-linejoin="round">
@@ -7627,16 +7627,31 @@
 
               <div style="height:1px;background:rgba(255,255,255,0.06);margin:6px 0;"></div>
 
-              <!-- 7. Show All Brokers -->
+              <!-- 7. Open Full Connected Brokers Management Page -->
+              <div class="dropdown-item" onclick="if(window.showPage){window.showPage('brokers');}else{window.location.hash='#brokers';}document.getElementById('portfolioBrokerDropdown')?.classList.remove('dropdown-open');"
+                style="color:var(--accent);font-size:12px;justify-content:space-between;padding:8px 12px;cursor:pointer;font-weight:600;background:rgba(224,169,78,0.08);border-radius:8px;margin:2px 0;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                    <line x1="8" y1="21" x2="16" y2="21" />
+                    <line x1="12" y1="17" x2="12" y2="21" />
+                  </svg>
+                  <span>🔗 Connected Brokers Page</span>
+                </div>
+                <span style="font-size:9.5px;background:var(--accent);color:#101322;padding:1px 6px;border-radius:4px;font-weight:800;">Manage</span>
+              </div>
+
+              <!-- 8. Show All Brokers Catalog Modal -->
               <div class="dropdown-item" onclick="if(window.openAllBrokersModal)window.openAllBrokersModal();"
-                style="color:var(--accent);font-size:12px;justify-content:center;padding:8px;cursor:pointer;font-weight:600;">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                style="color:var(--text-muted);font-size:11.5px;justify-content:center;padding:6px 8px;cursor:pointer;font-weight:500;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                   stroke-linecap="round" stroke-linejoin="round">
                   <circle cx="12" cy="12" r="10" />
                   <line x1="12" y1="8" x2="12" y2="16" />
                   <line x1="8" y1="12" x2="16" y2="12" />
                 </svg>
-                <span>+ Show All Brokers</span>
+                <span>+ Browse 25+ Broker Integrations</span>
               </div>
             </div>
           </div>
@@ -7646,6 +7661,7 @@
             <div class="nav-dropdown portfolio-currency-dropdown" id="portfolioCurrencyDropdown"
               style="position:relative;">
               <button class="portfolio-curr-btn" id="portfolioCurrencyBtn" type="button"
+                onclick="if(window.togglePortfolioDropdown)window.togglePortfolioDropdown('portfolioCurrencyDropdown',event);else{event.stopPropagation();document.getElementById('portfolioCurrencyDropdown')?.classList.toggle('dropdown-open');}"
                 aria-label="Select Base Currency">
                 <span class="portfolio-curr-flag" id="portfolioCurrFlag">💵</span>
                 <span id="portfolioCurrLabel">USD ($)</span>
@@ -7896,6 +7912,185 @@
                 <span>Profit Factor</span>
               </div>
               <div class="portfolio-stat-val" id="pmProfitFactor">0.87</div>
+            </div>
+          </div>
+
+          <!-- Broker P&L Comparison (Cross-Broker Performance Breakdown & Comparative Graph) -->
+          <div class="jcard portfolio-broker-compare-card" id="portfolioBrokerCompareSection" style="margin-top: 16px;">
+            <div class="portfolio-broker-compare-header">
+              <div>
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;">
+                  <h3 class="portfolio-chart-title">Broker P&amp;L Comparison</h3>
+                  <span class="portfolio-tag-pill">Multi-Broker Analytics</span>
+                </div>
+                <p class="portfolio-chart-sub">Comparative equity growth curves, net P&amp;L trajectories, and win distributions across connected brokers</p>
+              </div>
+              <!-- Connected Brokers Dropdown in Comparison Header -->
+              <div class="nav-dropdown portfolio-broker-dropdown" id="compareBrokerDropdown" style="position:relative;">
+                <button class="portfolio-broker-btn" id="compareBrokerDropdownBtn" type="button" onclick="if(window.togglePortfolioDropdown)window.togglePortfolioDropdown('compareBrokerDropdown',event);else{event.stopPropagation();document.getElementById('compareBrokerDropdown')?.classList.toggle('dropdown-open');}" aria-label="Connected Brokers Options">
+                  <span class="p-dot p-dot-green"></span>
+                  <span id="compareBrokerDropdownLabel">Connected Brokers (5)</span>
+                  <svg class="dropdown-chevron" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="m6 9 6 6 6-6" />
+                  </svg>
+                </button>
+
+                <div class="dropdown-menu portfolio-broker-dropdown-menu" id="compareBrokerDropdownMenu" style="position:absolute;right:0 !important;left:auto !important;top:calc(100% + 6px);min-width:280px;max-width:min(315px, calc(100vw - 32px));background:#13182b;border:1px solid rgba(255,255,255,0.14);border-radius:14px;padding:10px;box-shadow:0 18px 45px rgba(0,0,0,0.75);z-index:1050;">
+                  <!-- Header with Title & Quick Select Actions -->
+                  <div style="display:flex;justify-content:space-between;align-items:center;padding:2px 4px 8px;border-bottom:1px solid rgba(255,255,255,0.08);margin-bottom:6px;">
+                    <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);font-weight:700;">Select Brokers to Compare</span>
+                    <div style="display:flex;gap:8px;font-size:11px;">
+                      <span onclick="if(window.selectAllBrokersCompare)window.selectAllBrokersCompare(event);" style="color:var(--accent);cursor:pointer;font-weight:600;">Select All</span>
+                      <span style="color:rgba(255,255,255,0.2);">|</span>
+                      <span onclick="if(window.clearAllBrokersCompare)window.clearAllBrokersCompare(event);" style="color:var(--text-muted);cursor:pointer;font-weight:500;">Reset</span>
+                    </div>
+                  </div>
+
+                  <!-- Check List Items container -->
+                  <div id="compareBrokerCheckList" style="display:flex;flex-direction:column;gap:3px;max-height:270px;overflow-y:auto;">
+                    <!-- 1. MT5 -->
+                    <div class="portfolio-broker-check-item checked" data-broker-id="mt5" onclick="if(window.toggleBrokerCompareSelection)window.toggleBrokerCompareSelection('mt5', event);">
+                      <div class="broker-checkbox-box">
+                        <svg class="broker-checkbox-icon" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      </div>
+                      <span class="portfolio-broker-logo mt-logo" style="width:24px;height:24px;font-size:10px;border-radius:6px;">MT</span>
+                      <div style="flex:1;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                          <strong style="color:var(--text);font-size:12px;">MetaTrader 5 (MT5)</strong>
+                          <span style="font-size:10px;color:#10b981;font-weight:700;font-family:'IBM Plex Mono',monospace;">+$485.40</span>
+                        </div>
+                        <div style="font-size:10px;color:var(--text-muted);display:flex;justify-content:space-between;">
+                          <span>Global FX &amp; Indices</span>
+                          <span>72.7% WR</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- 2. Angel One -->
+                    <div class="portfolio-broker-check-item checked" data-broker-id="angelone" onclick="if(window.toggleBrokerCompareSelection)window.toggleBrokerCompareSelection('angelone', event);">
+                      <div class="broker-checkbox-box">
+                        <svg class="broker-checkbox-icon" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      </div>
+                      <span class="portfolio-broker-logo" style="width:24px;height:24px;font-size:10px;font-weight:800;border-radius:6px;background:linear-gradient(135deg, #ff416c, #ff4b2b);color:#fff;display:flex;align-items:center;justify-content:center;">A</span>
+                      <div style="flex:1;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                          <strong style="color:var(--text);font-size:12px;">Angel One</strong>
+                          <span style="font-size:10px;color:#ff416c;font-weight:700;font-family:'IBM Plex Mono',monospace;">+₹4,950</span>
+                        </div>
+                        <div style="font-size:10px;color:var(--text-muted);display:flex;justify-content:space-between;">
+                          <span>Indian Equity/F&amp;O</span>
+                          <span>64.3% WR</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- 3. Dhan HQ -->
+                    <div class="portfolio-broker-check-item" data-broker-id="dhan" onclick="if(window.toggleBrokerCompareSelection)window.toggleBrokerCompareSelection('dhan', event);">
+                      <div class="broker-checkbox-box">
+                        <svg class="broker-checkbox-icon" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      </div>
+                      <span class="portfolio-broker-logo dhan-logo" style="width:24px;height:24px;font-size:10px;border-radius:6px;">D</span>
+                      <div style="flex:1;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                          <strong style="color:var(--text);font-size:12px;">Dhan HQ</strong>
+                          <span style="font-size:10px;color:#3b82f6;font-weight:700;font-family:'IBM Plex Mono',monospace;">+₹3,800</span>
+                        </div>
+                        <div style="font-size:10px;color:var(--text-muted);display:flex;justify-content:space-between;">
+                          <span>Options &amp; Scalping</span>
+                          <span>61.1% WR</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- 4. Vantage FX -->
+                    <div class="portfolio-broker-check-item" data-broker-id="vantage" onclick="if(window.toggleBrokerCompareSelection)window.toggleBrokerCompareSelection('vantage', event);">
+                      <div class="broker-checkbox-box">
+                        <svg class="broker-checkbox-icon" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      </div>
+                      <span class="portfolio-broker-logo" style="width:24px;height:24px;font-size:10px;font-weight:800;border-radius:6px;background:linear-gradient(135deg, #0284c7, #0369a1);color:#fff;display:flex;align-items:center;justify-content:center;">V</span>
+                      <div style="flex:1;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                          <strong style="color:var(--text);font-size:12px;">Vantage FX</strong>
+                          <span style="font-size:10px;color:#0284c7;font-weight:700;font-family:'IBM Plex Mono',monospace;">+$142.60</span>
+                        </div>
+                        <div style="font-size:10px;color:var(--text-muted);display:flex;justify-content:space-between;">
+                          <span>Forex &amp; Gold (XAU)</span>
+                          <span>55.6% WR</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- 5. Upstox Pro -->
+                    <div class="portfolio-broker-check-item" data-broker-id="upstox" onclick="if(window.toggleBrokerCompareSelection)window.toggleBrokerCompareSelection('upstox', event);">
+                      <div class="broker-checkbox-box">
+                        <svg class="broker-checkbox-icon" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      </div>
+                      <span class="portfolio-broker-logo" style="width:24px;height:24px;font-size:10px;font-weight:800;border-radius:6px;background:linear-gradient(135deg, #7928ca, #4338ca);color:#fff;display:flex;align-items:center;justify-content:center;">U</span>
+                      <div style="flex:1;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                          <strong style="color:var(--text);font-size:12px;">Upstox Pro</strong>
+                          <span style="font-size:10px;color:#7928ca;font-weight:700;font-family:'IBM Plex Mono',monospace;">+₹2,650</span>
+                        </div>
+                        <div style="font-size:10px;color:var(--text-muted);display:flex;justify-content:space-between;">
+                          <span>Cash Equity &amp; Swing</span>
+                          <span>60.0% WR</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style="height:1px;background:rgba(255,255,255,0.06);margin:8px 0 6px;"></div>
+
+                  <!-- Quick 2-Broker Comparison Presets -->
+                  <div style="display:flex;justify-content:space-between;align-items:center;padding:2px 4px 6px;">
+                    <span style="font-size:10px;color:var(--text-muted);">Quick 2-Broker Pair:</span>
+                    <div style="display:flex;gap:5px;">
+                      <span onclick="if(window.selectTwoBrokersCompare)window.selectTwoBrokersCompare('mt5','angelone',event);"
+                        style="font-size:10px;color:var(--accent);cursor:pointer;font-weight:600;background:rgba(224,169,78,0.1);padding:2px 6px;border-radius:4px;">MT5 vs Angel</span>
+                      <span onclick="if(window.selectTwoBrokersCompare)window.selectTwoBrokersCompare('dhan','upstox',event);"
+                        style="font-size:10px;color:var(--accent);cursor:pointer;font-weight:600;background:rgba(224,169,78,0.1);padding:2px 6px;border-radius:4px;">Dhan vs Upstox</span>
+                    </div>
+                  </div>
+
+                  <!-- 7. Open Full Connected Brokers Management Page -->
+                  <div class="dropdown-item" onclick="if(window.showPage){window.showPage('brokers');}else{window.location.hash='#brokers';}document.getElementById('compareBrokerDropdown')?.classList.remove('dropdown-open');"
+                    style="color:var(--accent);font-size:11.5px;justify-content:space-between;padding:7px 10px;cursor:pointer;font-weight:600;background:rgba(224,169,78,0.08);border-radius:8px;margin-top:4px;">
+                    <div style="display:flex;align-items:center;gap:8px;">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                        <line x1="8" y1="21" x2="16" y2="21" />
+                        <line x1="12" y1="17" x2="12" y2="21" />
+                      </svg>
+                      <span>🔗 Connected Brokers Page</span>
+                    </div>
+                    <span style="font-size:9px;background:var(--accent);color:#101322;padding:1px 5px;border-radius:4px;font-weight:800;">Manage</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Expanded Full-Width Visual Canvas Comparison Graph/Chart -->
+            <div class="portfolio-broker-chart-wrap" style="width: 100%;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+                <div class="portfolio-broker-legend-row" id="brokerGraphLegendRow">
+                  <!-- Dynamic colored dot legends for each broker rendered by portfolio.js -->
+                </div>
+                <span style="font-size:12px;font-weight:600;color:var(--text);font-family:'IBM Plex Mono',monospace;" id="brokerCompareTotalPnlLabel">Combined Net P&amp;L: +$1,116.17</span>
+              </div>
+              <div class="portfolio-canvas-wrap" style="min-height:280px;height:280px;">
+                <canvas id="brokerPnlCompareCanvas"></canvas>
+              </div>
             </div>
           </div>
 
@@ -12143,6 +12338,24 @@
           </div>
         </div>
 
+      </div>
+
+      <!-- Modal Footer Action Bar -->
+      <div style="padding:14px 26px;background:#0b0e1b;border-top:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+        <span style="font-size:12px;color:var(--text-muted);">Need to configure API credentials, tokens, or sync settings?</span>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <button type="button" onclick="if(window.closeAllBrokersModal)window.closeAllBrokersModal();"
+            style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:var(--text-muted);padding:7px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">Close</button>
+          <button type="button" onclick="if(window.closeAllBrokersModal)window.closeAllBrokersModal();if(window.showPage){window.showPage('brokers');}else{window.location.hash='#brokers';}"
+            style="background:var(--accent);color:#101322;border:none;padding:7px 16px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;box-shadow:0 2px 8px rgba(224,169,78,0.3);">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+              <line x1="8" y1="21" x2="16" y2="21" />
+              <line x1="12" y1="17" x2="12" y2="21" />
+            </svg>
+            <span>Open Connected Brokers Page</span>
+          </button>
+        </div>
       </div>
     </div>
   </div>

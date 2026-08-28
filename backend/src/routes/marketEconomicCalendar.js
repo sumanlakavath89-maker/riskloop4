@@ -1,14 +1,13 @@
 /**
  * Market Economic Calendar Route
- * Fetches macroeconomic events primarily from Supabase (economic_events table),
- * with fallback to Financial Modeling Prep (FMP) service.
+ * Fetches macroeconomic events exclusively from official Indian government
+ * and institutional sources (RBI, MoSPI, Ministry of Finance, DPIIT, PIB, NSE India).
  * 
  * Endpoint: GET /api/market/economic-calendar
  */
 
 import { Router } from 'express';
-import { supabaseEconomicCalendarService } from '../services/SupabaseEconomicCalendarService.js';
-import { fmpEconomicCalendarService } from '../services/FMPEconomicCalendarService.js';
+import { indiaOfficialEconomicCalendarService } from '../services/IndiaOfficialEconomicCalendarService.js';
 
 const router = Router();
 
@@ -167,74 +166,33 @@ router.get('/', async (req, res) => {
       period = 'today',
       from,
       to,
-      country,
-      countryCode,
       impact,
       limit,
       refresh
     } = req.query;
 
     const forceRefresh = refresh === 'true' || refresh === '1';
-    const resolvedCountry = country || countryCode;
-    const targetCountryCode = (resolvedCountry && resolvedCountry !== 'ALL') ? resolvedCountry.toUpperCase().trim() : null;
-    const targetImpact = (impact && impact !== 'ALL') ? impact.toLowerCase().trim() : null;
-    const { from: fromDate, to: toDate } = resolveDateRange(period, from, to);
     const parsedLimit = limit ? parseInt(limit, 10) : 50;
 
-    // ── 1. Primary: Fetch from Supabase economic_events ───────────────
-    try {
-      const supabaseFilters = {
-        countryCode: targetCountryCode,
-        impact: targetImpact,
-        from: fromDate,
-        to: toDate,
-        limit: parsedLimit
-      };
-
-      const supabaseRows = await supabaseEconomicCalendarService.getEvents(supabaseFilters);
-
-      if (Array.isArray(supabaseRows) && supabaseRows.length > 0) {
-        const normalizedEvents = supabaseRows.map((row, idx) => normalizeSupabaseEvent(row, idx));
-
-        // Chronological sort
-        normalizedEvents.sort((a, b) => new Date(a.eventTime).getTime() - new Date(b.eventTime).getTime());
-
-        return res.status(200).json({
-          success: true,
-          status: 'ACTIVE',
-          isAvailable: true,
-          source: 'Supabase',
-          dateRange: { from: fromDate, to: toDate },
-          timestamp: new Date().toISOString(),
-          count: normalizedEvents.length,
-          events: normalizedEvents
-        });
-      }
-    } catch (supabaseErr) {
-      console.warn('[MarketEconomicCalendarRoute] Supabase fetch failed or empty, falling back to FMP:', supabaseErr.message);
-    }
-
-    // ── 2. Fallback: Fetch from FMP Economic Calendar Service ─────────
-    const fmpResult = await fmpEconomicCalendarService.getEconomicCalendar({
+    const result = await indiaOfficialEconomicCalendarService.getEconomicCalendar({
       period,
       from,
       to,
-      country: resolvedCountry,
       impact,
       limit: parsedLimit,
       forceRefresh
     });
 
-    return res.status(200).json(fmpResult);
+    return res.status(200).json(result);
 
   } catch (err) {
-    console.error('[MarketEconomicCalendarRoute] Error processing request:', err);
+    console.error('[MarketEconomicCalendarRoute] Error processing official economic calendar:', err);
     return res.status(500).json({
       success: false,
       status: 'SERVER_ERROR',
       isAvailable: false,
-      source: 'Supabase / FMP',
-      error: 'Failed to retrieve economic calendar',
+      source: 'Official Indian Government & Institutional Sources',
+      error: 'Failed to retrieve official economic calendar',
       message: err.message,
       events: []
     });

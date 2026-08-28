@@ -236,6 +236,113 @@
       { name: 'Pullback 20EMA', winRate: 64.3, trades: 14, avgRR: '1 : 2.00', pf: 2.10, pnlUSD: 173.65, status: 'Consistent' }, // ~₹14,500
       { name: 'Mean Reversion', winRate: 61.1, trades: 18, avgRR: '1 : 2.10', pf: 2.40, pnlUSD: 232.34, status: 'Moderate' }, // ~₹19,400
       { name: 'Opening Range Breakout', winRate: 45.5, trades: 11, avgRR: '1 : 1.70', pf: 0.85, pnlUSD: -68.26, status: 'Review' } // ~-₹5,700
+    ],
+    brokerPerformance: [
+      {
+        id: 'mt5',
+        name: 'MetaTrader 5 (MT5)',
+        shortName: 'MT5',
+        market: 'forex',
+        marketLabel: 'Global FX & Indices',
+        type: 'Bridge API',
+        logo: 'MT',
+        logoBg: 'linear-gradient(135deg, #10b981, #059669)',
+        color: '#10b981',
+        status: 'Active',
+        pnlUSD: 485.40,
+        winRate: 72.7,
+        wins: 16,
+        losses: 6,
+        trades: 22,
+        capitalUSD: 18570.00,
+        profitFactor: 3.10,
+        avgRR: '1 : 2.6',
+        pnlCurve: [0, 42.50, 78.00, 135.20, 120.00, 215.40, 248.00, 285.50, 310.00, 365.20, 390.00, 425.00, 455.00, 485.40]
+      },
+      {
+        id: 'angelone',
+        name: 'Angel One',
+        shortName: 'Angel One',
+        market: 'india',
+        marketLabel: 'Indian Equity / F&O',
+        type: 'SmartAPI',
+        logo: 'A',
+        logoBg: 'linear-gradient(135deg, #ff416c, #ff4b2b)',
+        color: '#ff416c',
+        status: 'Active',
+        pnlUSD: 245.80,
+        winRate: 64.3,
+        wins: 18,
+        losses: 10,
+        trades: 28,
+        capitalUSD: 4071.85, // ₹3.40L
+        profitFactor: 2.85,
+        avgRR: '1 : 2.4',
+        pnlCurve: [0, 25.15, 39.50, 68.00, 110.50, 125.00, 115.00, 142.00, 135.00, 175.00, 185.00, 205.00, 222.00, 245.80]
+      },
+      {
+        id: 'dhan',
+        name: 'Dhan HQ',
+        shortName: 'Dhan',
+        market: 'india',
+        marketLabel: 'Options & Scalping',
+        type: 'Direct API',
+        logo: 'D',
+        logoBg: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
+        color: '#3b82f6',
+        status: 'Active',
+        pnlUSD: 188.50,
+        winRate: 61.1,
+        wins: 11,
+        losses: 7,
+        trades: 18,
+        capitalUSD: 2574.85, // ₹2.15L
+        profitFactor: 2.45,
+        avgRR: '1 : 2.2',
+        pnlCurve: [0, 18.00, 28.50, 45.00, 72.00, 88.00, 102.00, 118.00, 112.00, 140.00, 152.00, 165.00, 175.00, 188.50]
+      },
+      {
+        id: 'vantage',
+        name: 'Vantage FX',
+        shortName: 'Vantage',
+        market: 'forex',
+        marketLabel: 'Forex & Gold (XAU)',
+        type: 'MT4/MT5 Server',
+        logo: 'V',
+        logoBg: 'linear-gradient(135deg, #0284c7, #0369a1)',
+        color: '#0284c7',
+        status: 'Active',
+        pnlUSD: 142.60,
+        winRate: 55.6,
+        wins: 5,
+        losses: 4,
+        trades: 9,
+        capitalUSD: 12400.00,
+        profitFactor: 2.30,
+        avgRR: '1 : 2.1',
+        pnlCurve: [0, 12.00, 22.00, 35.00, 48.00, 65.00, 75.00, 84.00, 92.00, 105.00, 115.00, 124.00, 132.00, 142.60]
+      },
+      {
+        id: 'upstox',
+        name: 'Upstox Pro',
+        shortName: 'Upstox',
+        market: 'india',
+        marketLabel: 'Cash Equity & Swing',
+        type: 'Upstox v2',
+        logo: 'U',
+        logoBg: 'linear-gradient(135deg, #7928ca, #4338ca)',
+        color: '#7928ca',
+        status: 'Active',
+        pnlUSD: 53.87,
+        winRate: 60.0,
+        wins: 3,
+        losses: 2,
+        trades: 5,
+        capitalUSD: 3413.17, // ₹2.85L
+        profitFactor: 1.75,
+        avgRR: '1 : 1.9',
+        pnlCurve: [0, 5.50, 9.20, 15.00, 22.00, 26.00, 24.00, 31.00, 28.50, 36.00, 40.00, 44.50, 48.00, 53.87]
+      }
     ]
   };
 
@@ -876,6 +983,453 @@
     }
   }
 
+  let _activeBrokerFilter = 'all'; // 'all', 'india', 'forex'
+  let _activeBrokerGraphMode = 'line'; // 'line' or 'bar'
+  let _hiddenBrokers = new Set(); // broker IDs toggled off in graph
+  let _selectedBrokerIds = new Set(['mt5', 'angelone']); // Default comparison: 2 brokers (MT5 vs Angel One)
+
+  const BROKER_CURVE_DATES = ['1 Jul', '5 Jul', '9 Jul', '14 Jul', '18 Jul', '23 Jul', '28 Jul', '31 Jul', '4 Aug', '8 Aug', '12 Aug', '16 Aug', '20 Aug', '24 Aug'];
+
+  /* ── Toggle Broker Checkbox Selection for Comparison ── */
+  function toggleBrokerCompareSelection(id, event) {
+    if (event) {
+      if (typeof event.preventDefault === 'function') event.preventDefault();
+      if (typeof event.stopPropagation === 'function') event.stopPropagation();
+    }
+    if (_selectedBrokerIds.has(id)) {
+      if (_selectedBrokerIds.size > 1) {
+        _selectedBrokerIds.delete(id);
+      }
+    } else {
+      _selectedBrokerIds.add(id);
+    }
+    updateBrokerCompareDropdownUI();
+    renderBrokerPnlCompare();
+    renderBrokerCardsList();
+  }
+
+  window.toggleBrokerCompareSelection = toggleBrokerCompareSelection;
+
+  /* ── Select All Brokers ── */
+  function selectAllBrokersCompare(event) {
+    if (event) {
+      if (typeof event.preventDefault === 'function') event.preventDefault();
+      if (typeof event.stopPropagation === 'function') event.stopPropagation();
+    }
+    (COMBINED_DATA.brokerPerformance || []).forEach(b => _selectedBrokerIds.add(b.id));
+    updateBrokerCompareDropdownUI();
+    renderBrokerPnlCompare();
+    renderBrokerCardsList();
+  }
+
+  window.selectAllBrokersCompare = selectAllBrokersCompare;
+
+  /* ── Clear All (Keep 1) ── */
+  function clearAllBrokersCompare(event) {
+    if (event) {
+      if (typeof event.preventDefault === 'function') event.preventDefault();
+      if (typeof event.stopPropagation === 'function') event.stopPropagation();
+    }
+    const first = (COMBINED_DATA.brokerPerformance || [])[0]?.id || 'mt5';
+    _selectedBrokerIds.clear();
+    _selectedBrokerIds.add(first);
+    updateBrokerCompareDropdownUI();
+    renderBrokerPnlCompare();
+    renderBrokerCardsList();
+  }
+
+  window.clearAllBrokersCompare = clearAllBrokersCompare;
+
+  /* ── Select Two Brokers Direct Comparison Preset ── */
+  function selectTwoBrokersCompare(id1, id2, event) {
+    if (event) {
+      if (typeof event.preventDefault === 'function') event.preventDefault();
+      if (typeof event.stopPropagation === 'function') event.stopPropagation();
+    }
+    _selectedBrokerIds.clear();
+    _selectedBrokerIds.add(id1);
+    _selectedBrokerIds.add(id2);
+    updateBrokerCompareDropdownUI();
+    renderBrokerPnlCompare();
+    renderBrokerCardsList();
+  }
+
+  window.selectTwoBrokersCompare = selectTwoBrokersCompare;
+
+  /* ── Update Dropdown Checkboxes & Trigger Label ── */
+  function updateBrokerCompareDropdownUI() {
+    const allBrokers = COMBINED_DATA.brokerPerformance || [];
+    const checkItems = document.querySelectorAll('.portfolio-broker-check-item');
+    checkItems.forEach(item => {
+      const id = item.dataset.brokerId;
+      if (id) {
+        item.classList.toggle('checked', _selectedBrokerIds.has(id));
+      }
+    });
+
+    const label = document.getElementById('compareBrokerDropdownLabel');
+    if (label) {
+      if (_selectedBrokerIds.size === allBrokers.length) {
+        label.textContent = `All Brokers (${allBrokers.length})`;
+      } else if (_selectedBrokerIds.size === 2) {
+        const sel = allBrokers.filter(b => _selectedBrokerIds.has(b.id));
+        label.textContent = `Comparing: ${sel.map(b => b.shortName).join(' vs ')}`;
+      } else if (_selectedBrokerIds.size === 1) {
+        const sel = allBrokers.find(b => _selectedBrokerIds.has(b.id));
+        label.textContent = `Broker: ${sel?.shortName || sel?.name || '1 selected'}`;
+      } else {
+        label.textContent = `Comparing (${_selectedBrokerIds.size}) Brokers`;
+      }
+    }
+  }
+
+  window.updateBrokerCompareDropdownUI = updateBrokerCompareDropdownUI;
+
+  /* ── Render Interactive Broker Graph Legend ── */
+  function renderBrokerGraphLegend() {
+    const legendRow = document.getElementById('brokerGraphLegendRow');
+    if (!legendRow) return;
+
+    const brokers = (COMBINED_DATA.brokerPerformance || []).filter(b => _selectedBrokerIds.has(b.id));
+
+    legendRow.innerHTML = brokers.map(b => {
+      const isHidden = _hiddenBrokers.has(b.id);
+      return `
+        <div class="portfolio-broker-legend-item ${isHidden ? 'dimmed' : ''}" data-broker-id="${b.id}" title="Click to show/hide ${b.name} line">
+          <span class="portfolio-legend-dot" style="background: ${b.color};"></span>
+          <span style="font-weight:600;color:var(--text);">${b.shortName || b.name}</span>
+          <span style="color:${b.pnlUSD >= 0 ? '#48B79A' : '#E0685A'};font-family:'IBM Plex Mono',monospace;font-size:10.5px;">${formatMoney(b.pnlUSD, { signed: true })}</span>
+        </div>
+      `;
+    }).join('');
+
+    legendRow.querySelectorAll('.portfolio-broker-legend-item').forEach(item => {
+      item.onclick = (e) => {
+        e.stopPropagation();
+        const id = item.dataset.brokerId;
+        if (!id) return;
+        if (_hiddenBrokers.has(id)) {
+          _hiddenBrokers.delete(id);
+        } else {
+          // Keep at least one broker visible
+          if (_hiddenBrokers.size < brokers.length - 1) {
+            _hiddenBrokers.add(id);
+          }
+        }
+        renderBrokerGraphLegend();
+        renderBrokerPnlCompare();
+      };
+    });
+  }
+
+  /* ── Broker P&L Comparison Canvas Render (Graph & Bar Modes) ── */
+  function renderBrokerPnlCompare(data) {
+    const canvas = document.getElementById('brokerPnlCompareCanvas');
+    if (!canvas) return;
+
+    const wrap = canvas.parentElement;
+    const dpr = window.devicePixelRatio || 1;
+    const cssW = wrap.clientWidth || 720;
+    const cssH = 280;
+
+    canvas.style.width = cssW + 'px';
+    canvas.style.height = cssH + 'px';
+    canvas.width = Math.round(cssW * dpr);
+    canvas.height = Math.round(cssH * dpr);
+
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, cssW, cssH);
+
+    const allBrokers = COMBINED_DATA.brokerPerformance || [];
+    const brokers = allBrokers.filter(b => _selectedBrokerIds.has(b.id));
+
+    if (!brokers.length) return;
+
+    const curr = CURRENCIES[_selectedCurrency] || CURRENCIES.USD;
+    const rate = curr.rate || 1.0;
+
+    // ─────────────────────────────────────────────────────────────
+    // 1. MULTI-SERIES GROWTH GRAPH (LINE CURVES)
+    // ─────────────────────────────────────────────────────────────
+    if (_activeBrokerGraphMode === 'line') {
+      const activeBrokers = brokers.filter(b => !_hiddenBrokers.has(b.id));
+      const displayBrokers = activeBrokers.length > 0 ? activeBrokers : brokers;
+
+      const pad = { t: 24, r: 85, b: 40, l: 65 };
+      const w = cssW - pad.l - pad.r;
+      const h = cssH - pad.t - pad.b;
+
+      // Find overall max and min values across all active curves
+      let allPoints = [0];
+      displayBrokers.forEach(b => {
+        const curve = b.pnlCurve || [0, b.pnlUSD];
+        curve.forEach(v => allPoints.push(v * rate));
+      });
+
+      const maxVal = Math.max(...allPoints, 50);
+      const minVal = Math.min(0, ...allPoints);
+      const yMax = maxVal * 1.12;
+      const yMin = minVal < 0 ? minVal * 1.15 : 0;
+      const span = (yMax - yMin) || 100;
+
+      const toX = (idx, total) => pad.l + (idx / (total - 1)) * w;
+      const toY = val => pad.t + ((yMax - val) / span) * h;
+
+      // Horizontal Y Grid lines (4 steps)
+      const steps = 4;
+      for (let i = 0; i <= steps; i++) {
+        const val = yMax - (i / steps) * (yMax - yMin);
+        const gy = toY(val);
+
+        ctx.strokeStyle = Math.abs(val) < 0.001 ? 'rgba(255, 255, 255, 0.28)' : 'rgba(255, 255, 255, 0.05)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash(Math.abs(val) < 0.001 ? [5, 4] : [2, 4]);
+        ctx.beginPath();
+        ctx.moveTo(pad.l, gy);
+        ctx.lineTo(pad.l + w, gy);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.fillStyle = '#6b7280';
+        ctx.font = '10px "IBM Plex Mono", monospace';
+        ctx.textAlign = 'right';
+
+        let label = '';
+        if (curr.code === 'INR') {
+          const abs = Math.abs(val);
+          label = abs >= 1000 ? `₹${(val / 1000).toFixed(1)}k` : `₹${Math.round(val)}`;
+        } else {
+          label = `${curr.prefix}${Math.round(val)}`;
+        }
+        ctx.fillText(label, pad.l - 8, gy + 3.5);
+      }
+
+      // X Date Labels
+      const numPts = BROKER_CURVE_DATES.length;
+      BROKER_CURVE_DATES.forEach((d, idx) => {
+        const gx = toX(idx, numPts);
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(gx, pad.t);
+        ctx.lineTo(gx, pad.t + h);
+        ctx.stroke();
+
+        ctx.fillStyle = '#6b7280';
+        ctx.font = '10.5px "Inter", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(d, gx, pad.t + h + 20);
+      });
+
+      // Render each broker's line curve
+      displayBrokers.forEach(b => {
+        const pts = (b.pnlCurve || [0, b.pnlUSD]).map(v => v * rate);
+        const color = b.color || '#48B79A';
+
+        // 1. Gradient glow area under line
+        const grad = ctx.createLinearGradient(0, pad.t, 0, pad.t + h);
+        grad.addColorStop(0, color + '25'); // subtle opacity
+        grad.addColorStop(1, color + '00');
+
+        ctx.beginPath();
+        ctx.moveTo(toX(0, pts.length), toY(pts[0]));
+        for (let i = 1; i < pts.length; i++) {
+          ctx.lineTo(toX(i, pts.length), toY(pts[i]));
+        }
+        ctx.lineTo(toX(pts.length - 1, pts.length), pad.t + h);
+        ctx.lineTo(toX(0, pts.length), pad.t + h);
+        ctx.closePath();
+        ctx.fillStyle = grad;
+        ctx.fill();
+
+        // 2. Main smooth curve line
+        ctx.beginPath();
+        ctx.moveTo(toX(0, pts.length), toY(pts[0]));
+        for (let i = 1; i < pts.length; i++) {
+          ctx.lineTo(toX(i, pts.length), toY(pts[i]));
+        }
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2.4;
+        ctx.stroke();
+
+        // 3. Dot on last data point
+        const lastX = toX(pts.length - 1, pts.length);
+        const lastY = toY(pts[pts.length - 1]);
+        ctx.beginPath();
+        ctx.arc(lastX, lastY, 4.5, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.strokeStyle = '#101426';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // 4. End tag label badge
+        const lastPnl = formatMoney(b.pnlUSD, { signed: true });
+        ctx.fillStyle = color;
+        ctx.font = '600 10.5px "IBM Plex Mono", monospace';
+        ctx.textAlign = 'left';
+        ctx.fillText(`${b.shortName || b.name}: ${lastPnl}`, lastX + 8, lastY + 3.5);
+      });
+
+      return;
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // 2. COMPARATIVE BAR CHART BREAKDOWN
+    // ─────────────────────────────────────────────────────────────
+    const pad = { t: 32, r: 24, b: 46, l: 65 };
+    const w = cssW - pad.l - pad.r;
+    const h = cssH - pad.t - pad.b;
+
+    const convertedPnl = brokers.map(b => b.pnlUSD * rate);
+    const maxVal = Math.max(...convertedPnl, 50);
+    const minVal = Math.min(0, ...convertedPnl);
+    const yMax = maxVal * 1.3;
+    const yMin = minVal < 0 ? minVal * 1.2 : 0;
+    const span = (yMax - yMin) || 100;
+
+    const toY = val => pad.t + ((yMax - val) / span) * h;
+
+    // Grid lines
+    const gridSteps = [yMax, yMax * 0.5, 0];
+    if (yMin < 0) gridSteps.push(yMin);
+
+    gridSteps.forEach(val => {
+      const gy = toY(val);
+      ctx.strokeStyle = val === 0 ? 'rgba(255, 255, 255, 0.25)' : 'rgba(255, 255, 255, 0.05)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash(val === 0 ? [4, 4] : [2, 4]);
+      ctx.beginPath();
+      ctx.moveTo(pad.l, gy);
+      ctx.lineTo(pad.l + w, gy);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.fillStyle = '#6b7280';
+      ctx.font = '10px "IBM Plex Mono", monospace';
+      ctx.textAlign = 'right';
+
+      let label = '';
+      if (curr.code === 'INR') {
+        const abs = Math.abs(val);
+        label = abs >= 1000 ? `₹${(val / 1000).toFixed(1)}k` : `₹${Math.round(val)}`;
+      } else {
+        label = `${curr.prefix}${Math.round(val)}`;
+      }
+      ctx.fillText(label, pad.l - 8, gy + 3.5);
+    });
+
+    const slotW = w / brokers.length;
+    const barW = Math.min(36, slotW * 0.52);
+    const zeroY = toY(0);
+
+    brokers.forEach((b, idx) => {
+      const cx = pad.l + (idx + 0.5) * slotW;
+      const pnl = b.pnlUSD * rate;
+      const isProfit = pnl >= 0;
+      const barTop = isProfit ? toY(pnl) : zeroY;
+      const barH = isProfit ? (zeroY - barTop) : (toY(pnl) - zeroY);
+
+      // Bar gradient fill
+      const grad = ctx.createLinearGradient(0, barTop, 0, barTop + barH);
+      if (isProfit) {
+        grad.addColorStop(0, b.color || '#48B79A');
+        grad.addColorStop(1, 'rgba(72, 183, 154, 0.15)');
+      } else {
+        grad.addColorStop(0, 'rgba(224, 104, 90, 0.15)');
+        grad.addColorStop(1, '#E0685A');
+      }
+
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      if (ctx.roundRect) {
+        ctx.roundRect(cx - barW / 2, barTop, barW, Math.max(3, barH), isProfit ? [5, 5, 0, 0] : [0, 0, 5, 5]);
+      } else {
+        ctx.rect(cx - barW / 2, barTop, barW, Math.max(3, barH));
+      }
+      ctx.fill();
+
+      // Top edge accent highlight
+      ctx.strokeStyle = b.color || (isProfit ? '#48B79A' : '#E0685A');
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.moveTo(cx - barW / 2, barTop);
+      ctx.lineTo(cx + barW / 2, barTop);
+      ctx.stroke();
+
+      // P&L Label above bar
+      ctx.fillStyle = isProfit ? '#48B79A' : '#E0685A';
+      ctx.font = '600 10.5px "IBM Plex Mono", monospace';
+      ctx.textAlign = 'center';
+      const pnlTxt = formatMoney(b.pnlUSD, { signed: true });
+      ctx.fillText(pnlTxt, cx, isProfit ? barTop - 6 : barTop + barH + 12);
+
+      // Broker name below chart
+      ctx.fillStyle = '#e5e7eb';
+      ctx.font = '600 10.5px "Space Grotesk", sans-serif';
+      ctx.fillText(b.shortName || b.name.split(' ')[0], cx, pad.t + h + 16);
+
+      // Trades sublabel
+      ctx.fillStyle = '#9ca3af';
+      ctx.font = '9px "Inter", sans-serif';
+      ctx.fillText(`${b.winRate}% · ${b.trades}T`, cx, pad.t + h + 29);
+    });
+  }
+
+  /* ── Populate Broker Quick Stats List & Graph Legend ── */
+  function renderBrokerCardsList() {
+    renderBrokerGraphLegend();
+
+    const allBrokers = COMBINED_DATA.brokerPerformance || [];
+    const brokers = allBrokers.filter(b => _selectedBrokerIds.has(b.id));
+
+    const totalPnlUSD = brokers.reduce((acc, b) => acc + b.pnlUSD, 0);
+    const totalPnlLabel = document.getElementById('brokerCompareTotalPnlLabel');
+    if (totalPnlLabel) {
+      const countLabel = brokers.length === 2 ? 'Comparing 2 Brokers' : (brokers.length === 1 ? '1 Broker' : `${brokers.length} Brokers`);
+      totalPnlLabel.textContent = `${countLabel} Net P&L: ${formatMoney(totalPnlUSD, { signed: true })}`;
+    }
+
+    const list = document.getElementById('portfolioBrokerCardsList');
+    if (!list) return;
+
+    list.innerHTML = brokers.map(b => {
+      const pnlFormatted = formatMoney(b.pnlUSD, { signed: true });
+      const isProfit = b.pnlUSD >= 0;
+      const capitalFormatted = formatMoney(b.capitalUSD);
+
+      return `
+        <div class="portfolio-broker-card-item" onclick="if(window.switchPortfolioBroker)window.switchPortfolioBroker('${b.market}','${b.name}');" title="Click to view ${b.name} performance">
+          <div class="portfolio-broker-item-left">
+            <div class="portfolio-broker-badge-logo" style="background: ${b.logoBg};">
+              ${b.logo}
+            </div>
+            <div class="portfolio-broker-info-col">
+              <div class="portfolio-broker-name-row">
+                <span class="portfolio-broker-name-txt">${b.name}</span>
+                <span class="portfolio-status-pill status-live" style="font-size:8.5px;padding:1px 5px;">${b.status}</span>
+              </div>
+              <span class="portfolio-broker-market-sub">${b.marketLabel} · ${b.trades} trades</span>
+            </div>
+          </div>
+
+          <div class="portfolio-broker-mid-col">
+            <span style="font-size:11px;font-weight:600;color:var(--text);">${b.winRate}% WR</span>
+            <div class="portfolio-broker-wr-bar">
+              <div class="portfolio-broker-wr-fill" style="width:${b.winRate}%;background:${b.color};"></div>
+            </div>
+          </div>
+
+          <div class="portfolio-broker-pnl-col">
+            <div class="portfolio-broker-pnl-num ${isProfit ? 'text-profit' : 'text-loss'}">${pnlFormatted}</div>
+            <div class="portfolio-broker-alloc-pct">${capitalFormatted} cap</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
   /* ── Instrument Profit Analysis Canvas Render (Screenshot 1) ── */
   function renderInstrumentProfit(data) {
     const canvas = document.getElementById('instrumentProfitCanvas');
@@ -1432,6 +1986,8 @@
     // Render Canvas Charts
     renderRadarScore();
     renderPnlCurve(data);
+    renderBrokerPnlCompare(data);
+    renderBrokerCardsList();
     renderInstrumentProfit(data);
     renderPnlDuration(data);
     renderScatterPlot(data);
@@ -1476,9 +2032,17 @@
     const pbDropdown = document.getElementById('portfolioBrokerDropdown');
     if (pbDropdown) pbDropdown.classList.remove('dropdown-open');
 
+    const cmpDropdown = document.getElementById('compareBrokerDropdown');
+    if (cmpDropdown) cmpDropdown.classList.remove('dropdown-open');
+
     const btnSpan = document.querySelector('#portfolioBrokerDropdownBtn span:not(.p-dot)');
     if (btnSpan) {
       btnSpan.textContent = name ? `Connected: ${name}` : 'Connected Brokers';
+    }
+
+    const cmpBtnSpan = document.getElementById('compareBrokerDropdownLabel');
+    if (cmpBtnSpan) {
+      cmpBtnSpan.textContent = name ? `Connected: ${name}` : 'Connected Brokers (5)';
     }
 
     // Navigate to portfolio view if not already visible
@@ -1495,6 +2059,29 @@
 
   window.switchPortfolioBroker = switchPortfolioBroker;
 
+  /* ── Toggle Dropdown Helper (Zero Conflict Toggle) ── */
+  function togglePortfolioDropdown(id, event) {
+    if (event) {
+      if (typeof event.preventDefault === 'function') event.preventDefault();
+      if (typeof event.stopPropagation === 'function') event.stopPropagation();
+    }
+    const target = document.getElementById(id);
+    if (!target) return;
+    const isCurrentlyOpen = target.classList.contains('dropdown-open');
+
+    // Close any other portfolio dropdowns first
+    ['compareBrokerDropdown', 'portfolioBrokerDropdown', 'portfolioCurrencyDropdown'].forEach(otherId => {
+      const other = document.getElementById(otherId);
+      if (other) other.classList.remove('dropdown-open');
+    });
+
+    if (!isCurrentlyOpen) {
+      target.classList.add('dropdown-open');
+    }
+  }
+
+  window.togglePortfolioDropdown = togglePortfolioDropdown;
+
   /* ── Initialization ── */
   function initPortfolioPage() {
     // Timeframe filters
@@ -1508,41 +2095,16 @@
       };
     });
 
-    // Connected Brokers dropdown functionality
-    const pbDropdown = document.getElementById('portfolioBrokerDropdown');
-    const pbDropdownBtn = document.getElementById('portfolioBrokerDropdownBtn');
-
-    if (pbDropdownBtn && pbDropdown && !pbDropdownBtn.dataset.initialized) {
-      pbDropdownBtn.dataset.initialized = 'true';
-      pbDropdownBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        pbDropdown.classList.toggle('dropdown-open');
-      });
-
+    // Setup global dropdown outside-click closing listener once
+    if (!window._portfolioDropdownsListenerAttached) {
+      window._portfolioDropdownsListenerAttached = true;
       document.addEventListener('click', (e) => {
-        if (!pbDropdown.contains(e.target)) {
-          pbDropdown.classList.remove('dropdown-open');
-        }
-      });
-    }
-
-    // Currency Switcher dropdown functionality
-    const currDropdown = document.getElementById('portfolioCurrencyDropdown');
-    const currBtn = document.getElementById('portfolioCurrencyBtn');
-
-    if (currBtn && currDropdown && !currBtn.dataset.initialized) {
-      currBtn.dataset.initialized = 'true';
-      currBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        currDropdown.classList.toggle('dropdown-open');
-      });
-
-      document.addEventListener('click', (e) => {
-        if (!currDropdown.contains(e.target)) {
-          currDropdown.classList.remove('dropdown-open');
-        }
+        ['compareBrokerDropdown', 'portfolioBrokerDropdown', 'portfolioCurrencyDropdown'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el && !el.contains(e.target)) {
+            el.classList.remove('dropdown-open');
+          }
+        });
       });
     }
 
@@ -1551,6 +2113,7 @@
       const data = _activeMarket === 'combined' ? COMBINED_DATA : (_activeMarket === 'forex' ? FOREX_DATA : INDIA_DATA);
       renderRadarScore();
       renderPnlCurve(data);
+      renderBrokerPnlCompare(data);
       renderInstrumentProfit(data);
       renderPnlDuration(data);
       renderScatterPlot(data);
@@ -1558,6 +2121,7 @@
       renderSemiGauge('shortGaugeCanvas', data.longShort.short.winRate);
     });
 
+    updateBrokerCompareDropdownUI();
     updatePortfolioUI();
   }
 

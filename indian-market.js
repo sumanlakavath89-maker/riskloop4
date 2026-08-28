@@ -128,7 +128,7 @@
   }
 
   /* ============================================================
-     ECONOMIC CALENDAR — FMP LIVE BACKEND INTEGRATION
+     ECONOMIC CALENDAR — OFFICIAL INDIAN GOVERNMENT SOURCES
      ============================================================ */
 
   let currentCalendarPeriod = 'today';
@@ -156,24 +156,24 @@
       return {
         success: false,
         status: errJson?.status || 'HTTP_ERROR',
-        message: errJson?.message || `HTTP ${response.status}: Failed to fetch calendar`,
+        message: errJson?.message || `HTTP ${response.status}: Failed to fetch official calendar`,
         events: []
       };
     } catch (err) {
-      console.warn('[IndianMarket] Failed to fetch economic calendar from backend:', err.message);
+      console.warn('[IndianMarket] Failed to fetch official economic calendar from backend:', err.message);
       return {
         success: false,
         status: 'NETWORK_ERROR',
-        message: 'Could not connect to RiskLoop market service.',
+        message: 'Could not connect to RiskLoop official economic calendar service.',
         events: []
       };
     }
   }
 
-  function formatISTDateTime(isoString) {
-    if (!isoString) return { date: '—', time: '—' };
+  function formatISTDateTime(isoString, fallbackDate = '—', fallbackTime = '—') {
+    if (!isoString) return { date: fallbackDate, time: fallbackTime };
     const d = new Date(isoString);
-    if (isNaN(d.getTime())) return { date: '—', time: '—' };
+    if (isNaN(d.getTime())) return { date: fallbackDate, time: fallbackTime };
 
     const dateStr = d.toLocaleDateString('en-IN', {
       timeZone: 'Asia/Kolkata',
@@ -185,10 +185,10 @@
       timeZone: 'Asia/Kolkata',
       hour: '2-digit',
       minute: '2-digit',
-      hour12: true
+      hour12: false
     });
 
-    return { date: dateStr, time: timeStr };
+    return { date: dateStr, time: `${timeStr} IST` };
   }
 
   function initEconomicCalendar() {
@@ -232,7 +232,7 @@
       viewAllBtn.addEventListener('click', () => {
         currentCalendarPeriod = 'all';
         [todayTab, tomorrowTab, weekTab].forEach(t => t.classList.remove('calendar-tab-active'));
-        if (navDate) navDate.textContent = 'All Economic Events';
+        if (navDate) navDate.textContent = 'All Official Releases';
         loadCalendarData('all');
       });
     }
@@ -283,7 +283,7 @@
       <tr>
         <td colspan="8" class="calendar-loading">
           <div class="loading-spinner"></div>
-          <span>Loading ${period === 'today' ? "today's" : period === 'tomorrow' ? "tomorrow's" : 'economic'} events from FMP...</span>
+          <span>Loading official Indian economic releases...</span>
         </td>
       </tr>
     `;
@@ -297,7 +297,7 @@
       renderCalendarTable(tbody, {
         success: false,
         status: 'CLIENT_ERROR',
-        message: 'Unable to display calendar events.',
+        message: 'Unable to display official calendar events.',
         events: []
       });
     } finally {
@@ -309,35 +309,16 @@
     if (!tbody) return;
 
     const events = Array.isArray(state?.events) ? state.events : [];
-    const status = state?.status || '';
     const message = state?.message || '';
 
-    // Handle Unconfigured / Restricted / Error states cleanly
     if (!state?.success && events.length === 0) {
-      let title = 'Economic Calendar Unavailable';
-      let desc = message || 'Macroeconomic calendar feed is currently unavailable.';
-
-      if (status === 'KEY_NOT_CONFIGURED') {
-        title = 'FMP API Key Required';
-        desc = 'FMP_API_KEY is not configured in backend .env. Add your Financial Modeling Prep key to enable live events.';
-      } else if (status === 'PLAN_RESTRICTED') {
-        title = 'FMP Plan Restricted';
-        desc = 'The economic calendar endpoint is restricted on the configured FMP tier. Upgrade your Financial Modeling Prep plan for live macroeconomic events.';
-      } else if (status === 'UNAUTHORIZED') {
-        title = 'Invalid FMP Credentials';
-        desc = 'The FMP_API_KEY in backend .env is invalid or expired.';
-      } else if (status === 'RATE_LIMITED') {
-        title = 'FMP Rate Limit Reached';
-        desc = 'Exceeded free API call limit for Financial Modeling Prep. Cached data will refresh shortly.';
-      }
-
       tbody.innerHTML = `
         <tr>
           <td colspan="8" class="calendar-loading" style="padding: 34px 20px;">
-            <div style="color: var(--text); font-size: 14px; font-weight: 600; margin-bottom: 6px;">${title}</div>
-            <div style="margin: 0 auto 14px; font-size: 12px; color: var(--text-muted); max-width: 500px; line-height: 1.4;">${desc}</div>
+            <div style="color: var(--text); font-size: 14px; font-weight: 600; margin-bottom: 6px;">Official Economic Calendar Notice</div>
+            <div style="margin: 0 auto 14px; font-size: 12px; color: var(--text-muted); max-width: 520px; line-height: 1.4;">${message || 'Official Indian economic data is currently refreshing.'}</div>
             <button class="jbtn-ghost jbtn-sm" id="retryCalendarBtn" style="margin: 0 auto; padding: 4px 14px; font-size: 12px; cursor: pointer;">
-              Retry Refresh
+              Refresh Data
             </button>
           </td>
         </tr>
@@ -354,8 +335,8 @@
       tbody.innerHTML = `
         <tr>
           <td colspan="8" class="calendar-loading" style="padding: 32px 20px;">
-            <div style="color: var(--text); font-size: 13px; font-weight: 600;">No economic events scheduled</div>
-            <div style="margin-top: 6px; font-size: 11px; color: var(--text-muted);">No major releases found for this selected timeframe.</div>
+            <div style="color: var(--text); font-size: 13px; font-weight: 600;">No Official Releases Scheduled</div>
+            <div style="margin-top: 6px; font-size: 11px; color: var(--text-muted);">No official Indian government or RBI macroeconomic announcements for this selected period.</div>
           </td>
         </tr>
       `;
@@ -370,10 +351,11 @@
 
       const impactLabel = impact.charAt(0).toUpperCase() + impact.slice(1);
       const { date, time } = formatISTDateTime(event.eventTime || event.date);
-      const currency = event.currency || 'USD';
-      const countryCode = event.countryCode || 'GLOBAL';
-      const countryFlag = event.countryFlag || '🌐';
-      const countryName = event.country || countryCode;
+      const currency = event.currency || 'INR';
+      const countryCode = event.countryCode || 'IN';
+      const countryFlag = event.countryFlag || '🇮🇳';
+      const sourceName = event.source || 'Official Source';
+      const sourceUrl = event.sourceUrl || 'https://www.mospi.gov.in';
 
       return `
         <tr>
@@ -388,7 +370,12 @@
           <td class="cal-col-event">
             <div class="cal-event-cell">
               <div class="cal-event-title">${event.event || '—'}</div>
-              ${event.unit ? `<div style="font-size: 10px; color: var(--text-muted); font-family: monospace;">Unit: ${event.unit}</div>` : ''}
+              <div style="display:flex;align-items:center;gap:6px;margin-top:3px;flex-wrap:wrap;">
+                <a href="${sourceUrl}" target="_blank" rel="noopener noreferrer" class="cal-source-pill" title="Click to verify release on official ${sourceName} portal">
+                  🏛️ ${sourceName} ↗
+                </a>
+                ${event.unit && event.unit !== '%' ? `<span style="font-size:9.5px;color:var(--text-muted);font-family:monospace;">${event.unit}</span>` : ''}
+              </div>
             </div>
           </td>
           <td class="cal-col-country">

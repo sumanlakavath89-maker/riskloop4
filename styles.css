@@ -5300,6 +5300,27 @@ body.authenticated:not(.landing-mode) .landing-center-nav {
   font-weight: 600;
 }
 
+.cal-source-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--accent);
+  background: rgba(224, 169, 78, 0.1);
+  border: 1px solid rgba(224, 169, 78, 0.25);
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.cal-source-pill:hover {
+  background: rgba(224, 169, 78, 0.2);
+  border-color: rgba(224, 169, 78, 0.5);
+  color: #fff;
+}
+
 /* Rows grouped by date */
 .ec-same-date-row .ec-date-cell {
   display: none;
@@ -17323,32 +17344,77 @@ body.authenticated:not(.landing-mode) .landing-center-nav {
   position: relative;
 }
 
+.portfolio-broker-btn,
 .portfolio-broker-dropdown-btn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 16px;
-  border-radius: 14px;
-  font-size: 13px;
+  padding: 7px 15px;
+  border-radius: 12px;
+  font-size: 12.5px;
   font-weight: 600;
   color: var(--text);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  box-shadow: var(--clay-raised-sm), var(--clay-edge);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
   cursor: pointer;
   transition: all 0.2s ease;
+  font-family: inherit;
 }
 
+.portfolio-broker-btn:hover,
 .portfolio-broker-dropdown-btn:hover {
   color: var(--accent);
-  background: var(--surface-2);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(224, 169, 78, 0.4);
+}
+
+.portfolio-broker-dropdown {
+  position: relative;
+}
+
+.portfolio-broker-dropdown.dropdown-open {
+  z-index: 1050;
 }
 
 .portfolio-broker-dropdown-menu {
-  left: 0;
-  right: auto;
-  min-width: 290px;
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0 !important;
+  left: auto !important;
+  min-width: 285px;
+  max-width: min(320px, calc(100vw - 32px));
   padding: 8px;
+  background: #13182b;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 14px;
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.75);
+  z-index: 1050;
+}
+
+#portfolioBrokerDropdownMenu {
+  left: 0 !important;
+  right: auto !important;
+}
+
+#compareBrokerDropdownMenu {
+  right: 0 !important;
+  left: auto !important;
+}
+
+.portfolio-broker-dropdown:not(.dropdown-open) .portfolio-broker-dropdown-menu {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+.portfolio-broker-dropdown.dropdown-open .portfolio-broker-dropdown-menu {
+  display: block !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: translateY(0) !important;
+  pointer-events: auto !important;
 }
 
 .portfolio-broker-item {
@@ -17363,6 +17429,58 @@ body.authenticated:not(.landing-mode) .landing-center-nav {
 
 .portfolio-broker-item:hover {
   background: rgba(255, 255, 255, 0.05);
+}
+
+/* Custom Broker Checkbox Item */
+.portfolio-broker-check-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.portfolio-broker-check-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.portfolio-broker-check-item.checked {
+  background: rgba(224, 169, 78, 0.08);
+  border-color: rgba(224, 169, 78, 0.3);
+}
+
+.broker-checkbox-box {
+  width: 17px;
+  height: 17px;
+  border-radius: 5px;
+  border: 1.5px solid rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.04);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.portfolio-broker-check-item.checked .broker-checkbox-box {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #101322;
+}
+
+.broker-checkbox-icon {
+  display: none;
+}
+
+.portfolio-broker-check-item.checked .broker-checkbox-icon {
+  display: block;
+  stroke: #101322;
 }
 
 /* Currency Switcher Dropdown */
@@ -17826,6 +17944,301 @@ body.authenticated:not(.landing-mode) .landing-center-nav {
 
 .p-dot-green { background: #48B79A; }
 .p-dot-red { background: #E0685A; }
+
+/* ── Broker P&L Comparison Styles ── */
+.portfolio-broker-compare-card {
+  padding: 20px 22px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--clay-raised-sm);
+  margin-bottom: 16px;
+  position: relative;
+  overflow: visible;
+}
+
+.portfolio-broker-compare-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+  position: relative;
+  overflow: visible;
+  z-index: 100;
+}
+
+.portfolio-tag-pill {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 5px;
+  background: rgba(224, 169, 78, 0.14);
+  color: var(--accent);
+  border: 1px solid rgba(224, 169, 78, 0.3);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+/* Graph View Mode Switcher (Graph vs Bars) */
+.portfolio-view-switch-group {
+  display: flex;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 9px;
+  padding: 3px;
+  gap: 3px;
+}
+
+.portfolio-view-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.18s ease;
+  font-family: inherit;
+}
+
+.portfolio-view-btn:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.portfolio-view-btn.active {
+  background: rgba(224, 169, 78, 0.2);
+  color: var(--accent);
+  border: 1px solid rgba(224, 169, 78, 0.4);
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(224, 169, 78, 0.15);
+}
+
+.portfolio-broker-legend-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.portfolio-broker-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 5px;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.portfolio-broker-legend-item:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.portfolio-broker-legend-item.dimmed {
+  opacity: 0.35;
+  text-decoration: line-through;
+}
+
+.portfolio-legend-dot {
+  width: 7.5px;
+  height: 7.5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.portfolio-filter-pill-group {
+  display: flex;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 9px;
+  padding: 3px;
+  gap: 3px;
+}
+
+.portfolio-pill-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  font-family: inherit;
+}
+
+.portfolio-pill-btn:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.portfolio-pill-btn.active {
+  background: var(--accent);
+  color: #101322;
+  font-weight: 700;
+  box-shadow: 0 2px 6px rgba(224, 169, 78, 0.25);
+}
+
+.portfolio-broker-compare-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: stretch;
+}
+
+@media (max-width: 960px) {
+  .portfolio-broker-compare-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.portfolio-broker-chart-wrap {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 14px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+}
+
+.portfolio-broker-cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 255px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.portfolio-broker-cards-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.portfolio-broker-cards-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+}
+
+.portfolio-broker-card-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  padding: 8px 12px;
+  transition: all 0.18s ease;
+  cursor: pointer;
+  gap: 10px;
+}
+
+.portfolio-broker-card-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(224, 169, 78, 0.35);
+  transform: translateX(2px);
+}
+
+.portfolio-broker-item-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.portfolio-broker-badge-logo {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 11px;
+  color: #fff;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+
+.portfolio-broker-info-col {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.portfolio-broker-name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.portfolio-broker-name-txt {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.portfolio-broker-market-sub {
+  font-size: 10.5px;
+  color: var(--text-muted);
+}
+
+.portfolio-broker-mid-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  min-width: 75px;
+}
+
+.portfolio-broker-wr-bar {
+  width: 65px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.portfolio-broker-wr-fill {
+  height: 100%;
+  background: #48B79A;
+  border-radius: 4px;
+}
+
+.portfolio-broker-pnl-col {
+  text-align: right;
+  min-width: 85px;
+}
+
+.portfolio-broker-pnl-num {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.portfolio-broker-alloc-pct {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-family: 'IBM Plex Mono', monospace;
+}
+
 /* 4 Core Metric KPI Cards Grid (Screenshot 1) */
 .portfolio-kpi-4grid {
   display: grid;

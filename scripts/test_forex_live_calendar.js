@@ -92,25 +92,40 @@ async function runForexTests() {
   }
 
   // 2. Test Currency Filters
-  const currencies = ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'CNY', 'NZD', 'INR'];
+  const forexCurrencies = ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'CNY', 'NZD'];
 
-  console.log('\n📌 Testing Individual Currency Filtering');
-  for (const curr of currencies) {
+  console.log('\n📌 Testing Individual Forex Currency Filtering');
+  for (const curr of forexCurrencies) {
     try {
       const res = await fetch(`${BASE_URL}/api/market/economic-calendar/global?currencies=${curr}&limit=10`);
       assert(res.status === 200, `HTTP status 200 for currency=${curr}`);
 
       const data = await res.json();
       assert(data.success === true, `Response success for currency=${curr}`);
+      assert(data.market_scope === 'forex', `market_scope is 'forex' for currency=${curr}`);
 
       if (Array.isArray(data.events) && data.events.length > 0) {
         const allMatchCurr = data.events.every(e => e.currency === curr);
         assert(allMatchCurr, `All returned events have currency="${curr}" (${data.events.length} events)`);
+        const noIndia = data.events.every(e => e.countryCode !== 'IN' && e.currency !== 'INR' && e.market_scope === 'forex');
+        assert(noIndia, `Zero Indian events in Forex response for currency=${curr}`);
       }
     } catch (err) {
       console.error(`  ❌ Error for currency="${curr}":`, err.message);
       failed++;
     }
+  }
+
+  // 3. Test Strict INR Exclusion from Forex Calendar
+  console.log('\n📌 Testing Strict INR Exclusion from Forex Endpoint');
+  try {
+    const resINR = await fetch(`${BASE_URL}/api/market/economic-calendar/global?currencies=INR`);
+    assert(resINR.status === 200, 'HTTP status 200 for currencies=INR query');
+    const dataINR = await resINR.json();
+    assert(dataINR.events.length === 0, 'Forex endpoint strictly returns 0 events for currencies=INR');
+  } catch (err) {
+    console.error('  ❌ Error on INR exclusion test:', err.message);
+    failed++;
   }
 
   console.log('\n========================================================================');

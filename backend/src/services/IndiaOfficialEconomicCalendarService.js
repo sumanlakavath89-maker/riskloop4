@@ -300,6 +300,8 @@ class IndiaOfficialEconomicCalendarService {
 
         events.push({
           id: `official-${cfg.id}-${dateStr}`,
+          market_scope: 'india',
+          marketScope: 'india',
           date: dateStr,
           time: istFormattedTime, // "17:30 IST"
           eventTime: canonicalUtcIso, // "2026-08-28T12:00:00.000Z" (Canonical UTC)
@@ -430,6 +432,8 @@ class IndiaOfficialEconomicCalendarService {
 
           return {
             id: row.id || `supabase-in-${dateStr}-${idx}`,
+            market_scope: 'india',
+            marketScope: 'india',
             date: dateStr,
             time: istFormattedTime,
             eventTime: canonicalUtcIso,
@@ -502,6 +506,7 @@ class IndiaOfficialEconomicCalendarService {
     const responsePayload = {
       success: true,
       status: 'ACTIVE',
+      market_scope: 'india',
       isAvailable: true,
       dataOrigin: 'Official Indian Government Source',
       storageSource: usedStorageSource,

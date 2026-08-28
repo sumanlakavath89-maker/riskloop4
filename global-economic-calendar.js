@@ -21,7 +21,6 @@
   const ADMIN_API_BASE = '/api/admin/forex-calendar';
 
   const FLAG_MAP = {
-    INR: '🇮🇳',
     USD: '🇺🇸',
     EUR: '🇪🇺',
     GBP: '🇬🇧',
@@ -29,7 +28,8 @@
     AUD: '🇦🇺',
     CAD: '🇨🇦',
     CHF: '🇨🇭',
-    CNY: '🇨🇳'
+    CNY: '🇨🇳',
+    NZD: '🇳🇿'
   };
 
   const IMPACT_BADGES = {
@@ -196,7 +196,7 @@
     }
 
     renderFilters() {
-      const currencies = ['ALL', 'INR', 'USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'CNY'];
+      const currencies = ['ALL', 'USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'CNY', 'NZD'];
       const impacts = ['ALL', 'high', 'medium', 'low'];
       const statuses = ['ALL', 'upcoming', 'released'];
 

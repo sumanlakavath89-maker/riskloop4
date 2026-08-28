@@ -411,7 +411,15 @@
     const tableBody = document.getElementById('forexCalendarTableBody');
     if (!tableBody) return;
 
-    const events = Array.isArray(liveForexCalendarState?.events) ? liveForexCalendarState.events : [];
+    const rawEvents = Array.isArray(liveForexCalendarState?.events) ? liveForexCalendarState.events : [];
+    // Strict client-side Forex isolation: Exclude any Indian events
+    const events = rawEvents.filter(evt =>
+      evt.currency !== 'INR' &&
+      evt.countryCode !== 'IN' &&
+      evt.market_scope !== 'india' &&
+      evt.country?.toLowerCase() !== 'india' &&
+      !(evt.canonicalId && String(evt.canonicalId).startsWith('IN_'))
+    );
     const message = liveForexCalendarState?.message || '';
 
     // Error State

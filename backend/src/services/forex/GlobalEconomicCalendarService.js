@@ -29,10 +29,9 @@ import { snbSourceAdapter } from './providers/SNBSourceAdapter.js';
 import { pbocSourceAdapter } from './providers/PBoCSourceAdapter.js';
 import { rbnzSourceAdapter } from './providers/RBNZSourceAdapter.js';
 
-export const SUPPORTED_GLOBAL_CURRENCIES = ['INR', 'USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'CNY', 'NZD'];
+export const SUPPORTED_GLOBAL_CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'CNY', 'NZD'];
 
 export const CURRENCY_METADATA = {
-  INR: { name: 'India', countryCode: 'IN', currency: 'INR', flag: '🇮🇳', timezone: 'Asia/Kolkata', defaultSource: 'MoSPI / RBI', sourceName: 'Ministry of Statistics & RBI', sourceUrl: 'https://www.mospi.gov.in' },
   USD: { name: 'United States', countryCode: 'US', currency: 'USD', flag: '🇺🇸', timezone: 'America/New_York', defaultSource: 'BLS / BEA / Fed', sourceName: 'U.S. Bureau of Labor Statistics / Fed', sourceUrl: 'https://www.bls.gov' },
   EUR: { name: 'Eurozone', countryCode: 'EU', currency: 'EUR', flag: '🇪🇺', timezone: 'Europe/Brussels', defaultSource: 'ECB / Eurostat', sourceName: 'European Central Bank / Eurostat', sourceUrl: 'https://www.ecb.europa.eu' },
   GBP: { name: 'United Kingdom', countryCode: 'GB', currency: 'GBP', flag: '🇬🇧', timezone: 'Europe/London', defaultSource: 'Bank of England / ONS', sourceName: 'Bank of England / ONS', sourceUrl: 'https://www.bankofengland.co.uk' },
@@ -188,23 +187,6 @@ export class GlobalEconomicCalendarService {
     // ── 1. Sovereign Feed Discovery with Resilient Isolation ───────────
     const feedTasks = [];
 
-    // INR Subsystem
-    if (requestedCurrencies.includes('INR')) {
-      feedTasks.push((async () => {
-        try {
-          const dbEvents = await this.supabaseService.getEvents({ countryCode: 'IN' });
-          if (Array.isArray(dbEvents) && dbEvents.length > 0) {
-            return dbEvents.map(e => this._normalizeEvent(e, 'INR'));
-          }
-          const generated = indiaCalendarScheduleService.generateUpcomingEvents({ daysAhead: 60 });
-          return (generated.events || []).map(e => this._normalizeEvent(e, 'INR'));
-        } catch (err) {
-          feedErrors.push({ currency: 'INR', error: err.message });
-          return [];
-        }
-      })());
-    }
-
     // USD Subsystem: BLS, BEA, Fed
     if (requestedCurrencies.includes('USD')) {
       feedTasks.push((async () => {
@@ -353,6 +335,17 @@ export class GlobalEconomicCalendarService {
 
     // ── 3. Apply Multi-Dimensional Filtering ──────────────────────────
     let filtered = uniqueEvents.filter(ev => {
+      // Strict Forex Scope Isolation: Never return Indian Market events in the Forex Calendar
+      if (
+        ev.countryCode === 'IN' ||
+        ev.currency === 'INR' ||
+        ev.market_scope === 'india' ||
+        ev.country?.toLowerCase() === 'india' ||
+        (ev.canonicalId && String(ev.canonicalId).startsWith('IN_'))
+      ) {
+        return false;
+      }
+
       // Date filter
       if (resolvedFrom && ev.originalDate < resolvedFrom) return false;
       if (resolvedTo && ev.originalDate > resolvedTo) return false;
@@ -395,6 +388,8 @@ export class GlobalEconomicCalendarService {
 
       return {
         id: ev.id,
+        market_scope: 'forex',
+        marketScope: 'forex',
         canonicalId: ev.canonicalId || getCanonicalIndicatorKey(ev),
         event: ev.eventName,
         eventName: ev.eventName,
@@ -462,21 +457,10 @@ export class GlobalEconomicCalendarService {
     // ── 7. Public Output Payload ──────────────────────────────────────
     return {
       success: true,
-      service: 'GlobalEconomicCalendarService',
+      status: 'ACTIVE',
+      market_scope: 'forex',
       dataOrigin: 'Official Sovereign Government & Central Bank Sources',
-      timestamp: new Date().toISOString(),
-      latencyMs: Date.now() - startTime,
       userTimezone,
-      dateRange: { from: resolvedFrom, to: resolvedTo },
-      filters: {
-        period: period || 'all',
-        currencies: requestedCurrencies,
-        from: resolvedFrom || null,
-        to: resolvedTo || null,
-        impact: impact || 'ALL',
-        status: status || 'ALL',
-        search: search || null
-      },
       pagination: {
         page: safePage,
         limit: safeLimit,
@@ -485,8 +469,10 @@ export class GlobalEconomicCalendarService {
         hasNextPage: safePage < totalPages,
         hasPrevPage: safePage > 1
       },
-      feedErrorsCount: feedErrors.length,
-      events: pagedEvents
+      count: pagedEvents.length,
+      events: pagedEvents,
+      supportedCurrencies: [...SUPPORTED_GLOBAL_CURRENCIES],
+      errors: feedErrors.length > 0 ? feedErrors : undefined
     };
   }
 
@@ -502,7 +488,9 @@ export class GlobalEconomicCalendarService {
       for (let c of list) {
         c = c.toUpperCase().trim();
         if (c === 'ALL') return [...SUPPORTED_GLOBAL_CURRENCIES];
-        if (SUPPORTED_GLOBAL_CURRENCIES.includes(c)) resolved.add(c);
+        if (SUPPORTED_GLOBAL_CURRENCIES.includes(c)) {
+          resolved.add(c);
+        }
       }
     }
 
@@ -511,6 +499,7 @@ export class GlobalEconomicCalendarService {
       for (let co of list) {
         co = co.toUpperCase().trim();
         if (co === 'ALL') return [...SUPPORTED_GLOBAL_CURRENCIES];
+        if (co === 'IN' || co === 'INDIA') continue;
         for (const [curr, meta] of Object.entries(CURRENCY_METADATA)) {
           if (meta.countryCode === co || meta.name.toUpperCase() === co) {
             resolved.add(curr);
@@ -519,7 +508,8 @@ export class GlobalEconomicCalendarService {
       }
     }
 
-    return resolved.size > 0 ? Array.from(resolved) : [...SUPPORTED_GLOBAL_CURRENCIES];
+    // If explicit filter was passed but matched nothing (e.g. currencies=INR), return empty array
+    return Array.from(resolved);
   }
 
   _normalizeEvent(raw, defaultCurrency) {
@@ -547,6 +537,8 @@ export class GlobalEconomicCalendarService {
 
     return {
       id: raw.id || `ev_${currency}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      market_scope: 'forex',
+      marketScope: 'forex',
       canonicalId: getCanonicalIndicatorKey(raw),
       eventName: raw.event_name || raw.name || raw.indicator || 'Economic Release',
       currency,

@@ -256,6 +256,11 @@ app.use('/api/dev', devRoutes);
 // Static frontend file serving
 app.use(express.static(frontendDir));
 
+// Authentication callback endpoint (mobile and desktop verification)
+app.get(['/auth/callback', '/auth/callback.html'], (req, res) => {
+  res.sendFile(path.join(frontendDir, 'auth', 'callback.html'));
+});
+
 // Fallback to index.html for root path and auth entry points
 app.get(['/', '/reset-password', '/login', '/register'], (req, res) => {
   res.sendFile(path.join(frontendDir, 'index.html'));

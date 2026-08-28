@@ -8852,7 +8852,7 @@ function formatOffset(offset) {
     if (backendBrokerId === 'fyers') {
       showToast('Initiating FYERS OAuth2 connection...', 'info');
       try {
-        const response = await fetch('http://localhost:3000/api/auth/fyers/login-url');
+        const response = await fetch('/api/auth/fyers/login-url');
         const data = await response.json();
         if (data.success && data.data?.loginUrl) {
           closeModal();
@@ -8873,7 +8873,7 @@ function formatOffset(offset) {
     if (backendBrokerId === 'upstox') {
       showToast('Initiating Upstox OAuth2 connection...', 'info');
       try {
-        const response = await fetch('http://localhost:3000/api/auth/upstox/login-url');
+        const response = await fetch('/api/auth/upstox/login-url');
         const data = await response.json();
         if (data.success && data.data?.loginUrl) {
           closeModal();

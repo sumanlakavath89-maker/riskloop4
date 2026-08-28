@@ -125,6 +125,38 @@
     };
   }
 
+  /**
+   * Resolve dynamic authentication redirect URL
+   * Detects the exact origin of the client (mobile device, desktop, production domain, preview, or local dev)
+   * Ensures mobile users never receive localhost URLs when registering on production.
+   */
+  function resolveAuthRedirectUrl(subpath = '/auth/callback') {
+    const cleanSubpath = subpath.startsWith('/') ? subpath : '/' + subpath;
+
+    // 1. Explicit environment override if configured
+    if (typeof window !== 'undefined') {
+      const explicitUrl = window.RISKLOOP_APP_URL || window.RISKLOOP_PUBLIC_URL || window.FRONTEND_URL;
+      if (explicitUrl && typeof explicitUrl === 'string' && explicitUrl.startsWith('http')) {
+        return `${explicitUrl.replace(/\/+$/, '')}${cleanSubpath}`;
+      }
+
+      // 2. Dynamic browser origin (Handles mobile browser, desktop, production, staging, localhost)
+      if (window.location && window.location.origin && window.location.origin.startsWith('http')) {
+        return `${window.location.origin}${cleanSubpath}`;
+      }
+    }
+
+    // 3. Fallback outside browser
+    if (typeof process !== 'undefined' && process.env) {
+      const serverEnvUrl = process.env.FRONTEND_URL || process.env.APP_URL || process.env.SITE_URL;
+      if (serverEnvUrl && serverEnvUrl.startsWith('http')) {
+        return `${serverEnvUrl.replace(/\/+$/, '')}${cleanSubpath}`;
+      }
+    }
+
+    return `http://localhost:3000${cleanSubpath}`;
+  }
+
   function cleanAuthUrl() {
     try {
       const hash = window.location.hash || '';
@@ -436,16 +468,23 @@
     },
 
     /**
+     * Resolve authentication redirect URL for current environment
+     */
+    resolveRedirectUrl: function (subpath = '/auth/callback') {
+      return resolveAuthRedirectUrl(subpath);
+    },
+
+    /**
      * Register a new user with Email & Password
      */
-    signUp: async function (email, password, metadata = {}) {
+    signUp: async function (email, password, metadata = {}, options = {}) {
       if (!email || !password) {
         return { error: { message: 'Email and password are required.' } };
       }
 
       if (supabaseClient) {
         try {
-          const redirectUrl = window.location.origin + window.location.pathname + '#dashboard';
+          const redirectUrl = options.emailRedirectTo || options.redirectTo || resolveAuthRedirectUrl('/auth/callback');
           const { data, error } = await supabaseClient.auth.signUp({
             email: email,
             password: password,
@@ -521,6 +560,31 @@
     },
 
     /**
+     * Sign in with Passwordless Magic Link / OTP
+     */
+    signInWithOtp: async function (email, options = {}) {
+      if (!email) {
+        return { error: { message: 'Email address is required.' } };
+      }
+      if (supabaseClient) {
+        try {
+          const redirectUrl = options.emailRedirectTo || options.redirectTo || resolveAuthRedirectUrl('/auth/callback');
+          const { data, error } = await supabaseClient.auth.signInWithOtp({
+            email: email,
+            options: {
+              emailRedirectTo: redirectUrl,
+              ...options
+            }
+          });
+          return { data, error };
+        } catch (err) {
+          return { data: null, error: err };
+        }
+      }
+      return { data: null, error: { message: 'Supabase authentication client is not initialized.' } };
+    },
+
+    /**
      * Sign In with Email & Password
      */
     signIn: async function (email, password) {
@@ -577,16 +641,7 @@
      * Sign in with Google OAuth
      */
     signInWithGoogle: async function (redirectTo) {
-      let redirectUrl = redirectTo;
-      if (!redirectUrl) {
-        const currentPath = window.location.pathname || '/';
-        const basePath = currentPath.endsWith('login.html') || currentPath.endsWith('register.html')
-          ? currentPath.replace(/(login|register)\.html$/, 'index.html')
-          : currentPath;
-        // Standard OAuth 2.0 redirect URLs MUST NOT contain hash fragments (#)
-        const cleanPath = basePath.startsWith('/') ? basePath : '/' + basePath;
-        redirectUrl = window.location.origin + cleanPath;
-      }
+      const redirectUrl = redirectTo || resolveAuthRedirectUrl('/auth/callback');
 
       if (supabaseClient) {
         try {
@@ -704,7 +759,7 @@
 
       if (supabaseClient) {
         try {
-          const redirectUrl = redirectTo || (window.location.origin + '/reset-password');
+          const redirectUrl = redirectTo || resolveAuthRedirectUrl('/auth/callback');
           const { data, error } = await supabaseClient.auth.resetPasswordForEmail(email, {
             redirectTo: redirectUrl
           });
@@ -783,5 +838,6 @@
   // Attach to window
   window.RiskLoopAuth = authService;
   window.supabaseClient = supabaseClient;
+  window.resolveAuthRedirectUrl = resolveAuthRedirectUrl;
 
 })(window);

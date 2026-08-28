@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Verifying Authentication — RiskLoop</title>
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg-primary: #0a0e17;
+      --bg-card: rgba(15, 23, 42, 0.8);
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --accent-glow: rgba(59, 130, 246, 0.25);
+      --success: #10b981;
+      --error: #ef4444;
+      --text-primary: #f8fafc;
+      --text-muted: #94a3b8;
+      --border: rgba(255, 255, 255, 0.1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-primary);
+      background-image: 
+        radial-gradient(circle at 50% 20%, rgba(59, 130, 246, 0.12) 0%, transparent 60%),
+        radial-gradient(circle at 80% 80%, rgba(16, 185, 129, 0.08) 0%, transparent 50%);
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .callback-card {
+      background: var(--bg-card);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 40px 32px;
+      max-width: 440px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5), 0 0 20px var(--accent-glow);
+      animation: fadeIn 0.4s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .logo-container {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+
+    .logo-badge {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35);
+    }
+
+    .logo-text {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      background: linear-gradient(to right, #ffffff, #94a3b8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 3px solid rgba(59, 130, 246, 0.2);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 20px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .status-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      margin: 0 auto 20px;
+    }
+
+    .status-icon.success {
+      display: flex;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: var(--success);
+    }
+
+    .status-icon.error {
+      display: flex;
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: var(--error);
+    }
+
+    h1 {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: var(--text-primary);
+    }
+
+    p {
+      font-size: 14px;
+      line-height: 1.5;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 12px 20px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: none;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #ffffff;
+      box-shadow: 0 4px 14px rgba(59, 130, 246, 0.3);
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-hover);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+      margin-top: 10px;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+  </style>
+</head>
+<body>
+  <div class="callback-card">
+    <div class="logo-container">
+      <div class="logo-badge">🛡️</div>
+      <div class="logo-text">RiskLoop</div>
+    </div>
+
+    <div class="spinner" id="loading-spinner"></div>
+    <div class="status-icon success" id="success-icon">✓</div>
+    <div class="status-icon error" id="error-icon">✕</div>
+
+    <h1 id="status-title">Verifying your account...</h1>
+    <p id="status-message">Please wait while we complete your authentication and secure your session.</p>
+
+    <div id="action-buttons" style="display: none;">
+      <a href="/index.html#dashboard" class="btn btn-primary" id="continue-btn">Go to Dashboard</a>
+      <a href="/login.html" class="btn btn-secondary" id="login-btn">Back to Login</a>
+    </div>
+  </div>
+
+  <script src="/supabase-config.js"></script>
+  <script>
+    (async function () {
+      const spinner = document.getElementById('loading-spinner');
+      const successIcon = document.getElementById('success-icon');
+      const errorIcon = document.getElementById('error-icon');
+      const statusTitle = document.getElementById('status-title');
+      const statusMessage = document.getElementById('status-message');
+      const actionButtons = document.getElementById('action-buttons');
+      const continueBtn = document.getElementById('continue-btn');
+
+      // Resolve destination base safely
+      const origin = window.location.origin;
+
+      try {
+        const hash = window.location.hash || '';
+        const search = window.location.search || '';
+
+        const hashParams = new URLSearchParams(hash.replace(/^#/, ''));
+        const searchParams = new URLSearchParams(search);
+
+        // Check for error in hash or query
+        const error = hashParams.get('error') || searchParams.get('error');
+        const errorDesc = hashParams.get('error_description') || searchParams.get('error_description') || hashParams.get('error_code');
+
+        if (error) {
+          showError('Verification Failed', errorDesc || 'This verification link is invalid or has expired.');
+          return;
+        }
+
+        const accessToken = hashParams.get('access_token');
+        const refreshToken = hashParams.get('refresh_token');
+        const authType = hashParams.get('type') || searchParams.get('type');
+        const code = searchParams.get('code');
+
+        // Check if password recovery
+        if (authType === 'recovery' || hash.includes('type=recovery') || search.includes('type=recovery')) {
+          statusTitle.textContent = 'Password Reset Verified';
+          statusMessage.textContent = 'Redirecting to password update page...';
+          setTimeout(() => {
+            window.location.replace(`${origin}/index.html#reset-password`);
+          }, 800);
+          return;
+        }
+
+        // Initialize Supabase Client
+        const client = window.supabaseClient || (window.supabase && window.supabase.createClient ? window.supabase.createClient(
+          'https://whaomffjbbwkyhbmfgex.supabase.co',
+          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndoYW9tZmZqYmJ3a3loYm1mZ2V4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDAxNzgwOTYsImV4cCI6MjA1NTc1NDA5Nn0.81Q5vTf1M3gC1VqYk8-n5QZ0-yV_f2Zz6uLw9g-Xk0w'
+        ) : null);
+
+        if (code && client && typeof client.auth.exchangeCodeForSession === 'function') {
+          const { data, error: exchangeErr } = await client.auth.exchangeCodeForSession(code);
+          if (exchangeErr) {
+            showError('Session Error', exchangeErr.message || 'Unable to exchange authentication code.');
+            return;
+          }
+          handleSuccessfulAuth(data?.user, authType);
+          return;
+        }
+
+        if (accessToken && refreshToken && client && typeof client.auth.setSession === 'function') {
+          const { data, error: setSessionErr } = await client.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          });
+          if (setSessionErr) {
+            showError('Session Error', setSessionErr.message || 'Unable to establish secure session.');
+            return;
+          }
+          handleSuccessfulAuth(data?.user, authType);
+          return;
+        }
+
+        // Check if session already exists
+        if (client && typeof client.auth.getSession === 'function') {
+          const { data: { session } } = await client.auth.getSession();
+          if (session && session.user) {
+            handleSuccessfulAuth(session.user, authType);
+            return;
+          }
+        }
+
+        // If arrived with type=signup / email confirmation
+        if (authType === 'signup' || authType === 'email_confirmation' || hash.includes('access_token=')) {
+          handleSuccessfulAuth(null, authType);
+          return;
+        }
+
+        // Default: redirect back to home / dashboard
+        handleSuccessfulAuth(null, 'default');
+
+      } catch (err) {
+        console.error('[AuthCallback] Error processing callback:', err);
+        showError('Authentication Error', err.message || 'An unexpected error occurred during verification.');
+      }
+
+      function handleSuccessfulAuth(user, type) {
+        spinner.style.display = 'none';
+        successIcon.style.display = 'flex';
+
+        if (type === 'signup' || type === 'email_confirmation') {
+          statusTitle.textContent = 'Email Verified Successfully! 🎉';
+          statusMessage.textContent = 'Your RiskLoop account is now active and ready. Opening your dashboard...';
+        } else {
+          statusTitle.textContent = 'Authentication Confirmed';
+          statusMessage.textContent = 'Your session has been established. Opening RiskLoop...';
+        }
+
+        localStorage.setItem('riskloop_auth_verified', 'true');
+        actionButtons.style.display = 'block';
+
+        // Auto-redirect to dashboard
+        setTimeout(() => {
+          window.location.replace(`${origin}/index.html#dashboard`);
+        }, 1200);
+      }
+
+      function showError(title, message) {
+        spinner.style.display = 'none';
+        errorIcon.style.display = 'flex';
+        statusTitle.textContent = title;
+        statusMessage.textContent = message;
+        actionButtons.style.display = 'block';
+        continueBtn.style.display = 'none';
+      }
+    })();
+  </script>
+</body>
+</html>

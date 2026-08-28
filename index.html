@@ -12146,22 +12146,21 @@
 
         <!-- Filter tabs -->
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <button type="button" class="broker-modal-tab active" data-cat="all"
+          <button type="button" class="broker-modal-tab active" data-cat="featured"
+            onclick="if(window.setBrokerModalCat)window.setBrokerModalCat('featured',this);"
+            style="padding:6px 13px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;background:var(--accent);color:#101322;border:none;">Featured (Top 6)</button>
+          <button type="button" class="broker-modal-tab" data-cat="all"
             onclick="if(window.setBrokerModalCat)window.setBrokerModalCat('all',this);"
-            style="padding:5px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;background:var(--accent);color:#101322;border:none;">All
-            Brokers</button>
+            style="padding:6px 13px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;background:rgba(255,255,255,0.05);color:var(--text);border:1px solid rgba(255,255,255,0.1);">View All Brokers</button>
           <button type="button" class="broker-modal-tab" data-cat="indian"
             onclick="if(window.setBrokerModalCat)window.setBrokerModalCat('indian',this);"
-            style="padding:5px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;background:rgba(255,255,255,0.05);color:var(--text);border:1px solid rgba(255,255,255,0.1);">🇮🇳
-            Indian Market (NSE/BSE)</button>
+            style="padding:6px 13px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;background:rgba(255,255,255,0.05);color:var(--text);border:1px solid rgba(255,255,255,0.1);">🇮🇳 Indian Market (NSE/BSE)</button>
           <button type="button" class="broker-modal-tab" data-cat="forex"
             onclick="if(window.setBrokerModalCat)window.setBrokerModalCat('forex',this);"
-            style="padding:5px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;background:rgba(255,255,255,0.05);color:var(--text);border:1px solid rgba(255,255,255,0.1);">💱
-            Forex & CFDs</button>
+            style="padding:6px 13px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;background:rgba(255,255,255,0.05);color:var(--text);border:1px solid rgba(255,255,255,0.1);">💱 Forex &amp; CFDs</button>
           <button type="button" class="broker-modal-tab" data-cat="crypto"
             onclick="if(window.setBrokerModalCat)window.setBrokerModalCat('crypto',this);"
-            style="padding:5px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;background:rgba(255,255,255,0.05);color:var(--text);border:1px solid rgba(255,255,255,0.1);">🪙
-            Crypto Exchanges</button>
+            style="padding:6px 13px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;background:rgba(255,255,255,0.05);color:var(--text);border:1px solid rgba(255,255,255,0.1);">🪙 Crypto Exchanges</button>
         </div>
       </div>
 

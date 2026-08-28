@@ -1436,7 +1436,7 @@
 
   /* ── All Supported Brokers & Exchanges Catalog ── */
   const SUPPORTED_BROKERS_CATALOG = [
-    // Indian Market (NSE/BSE)
+    // 3 Featured Indian
     {
       id: 'angelone',
       name: 'Angel One',
@@ -1446,6 +1446,7 @@
       bg: 'linear-gradient(135deg,#ff416c,#ff4b2b)',
       color: '#fff',
       initial: 'A',
+      isFeatured: true,
       logo: 'logos/angleone.png'
     },
     {
@@ -1457,6 +1458,7 @@
       bg: 'linear-gradient(135deg,#e0a94e,#f59e0b)',
       color: '#101322',
       initial: 'Z',
+      isFeatured: true,
       logo: 'logos/zerodha.png'
     },
     {
@@ -1468,8 +1470,10 @@
       bg: 'linear-gradient(135deg,#00b386,#008f6b)',
       color: '#fff',
       initial: 'D',
+      isFeatured: true,
       logo: 'logos/dhan.png'
     },
+    // Other Indian
     {
       id: 'upstox',
       name: 'Upstox',
@@ -1479,6 +1483,7 @@
       bg: 'linear-gradient(135deg,#7928ca,#4338ca)',
       color: '#fff',
       initial: 'U',
+      isFeatured: false,
       logo: 'logos/upstocks.png'
     },
     {
@@ -1490,6 +1495,7 @@
       bg: 'linear-gradient(135deg,#2b6cb0,#1a365d)',
       color: '#fff',
       initial: 'FY',
+      isFeatured: false,
       logo: 'logos/fyers.png'
     },
     {
@@ -1501,6 +1507,7 @@
       bg: 'linear-gradient(135deg,#ed1c24,#b91c1c)',
       color: '#fff',
       initial: 'KN',
+      isFeatured: false,
       logo: 'logos/kotak neo.png'
     },
     {
@@ -1512,6 +1519,7 @@
       bg: 'linear-gradient(135deg,#0047bb,#002b80)',
       color: '#fff',
       initial: 'SH',
+      isFeatured: false,
       logo: 'logos/shoonya.png'
     },
     {
@@ -1523,6 +1531,7 @@
       bg: 'linear-gradient(135deg,#0099ff,#0066cc)',
       color: '#fff',
       initial: 'AB',
+      isFeatured: false,
       logo: 'logos/aliceblue.png'
     },
     {
@@ -1534,9 +1543,10 @@
       bg: 'linear-gradient(135deg,#e31b23,#990000)',
       color: '#fff',
       initial: 'SM',
+      isFeatured: false,
       logo: 'logos/samco.png'
     },
-    // Forex & CFDs
+    // 3 Featured Forex
     {
       id: 'mt5',
       name: 'MetaTrader 5',
@@ -1546,6 +1556,7 @@
       bg: 'linear-gradient(135deg,#1c4e80,#0f2b48)',
       color: '#fff',
       initial: 'MT',
+      isFeatured: true,
       logo: 'logos/MetaTrader_5.png'
     },
     {
@@ -1557,6 +1568,7 @@
       bg: 'linear-gradient(135deg,#0284c7,#0369a1)',
       color: '#fff',
       initial: 'V',
+      isFeatured: true,
       logo: 'logos/vantage.png'
     },
     {
@@ -1568,8 +1580,10 @@
       bg: 'linear-gradient(135deg,#fbbf24,#d97706)',
       color: '#101322',
       initial: 'EX',
+      isFeatured: true,
       logo: 'logos/exness.png'
     },
+    // Other Forex
     {
       id: 'icmarkets',
       name: 'IC Markets',
@@ -1579,6 +1593,7 @@
       bg: 'linear-gradient(135deg,#059669,#047857)',
       color: '#fff',
       initial: 'IC',
+      isFeatured: false,
       logo: 'logos/icmarkets.png'
     },
     {
@@ -1590,6 +1605,7 @@
       bg: 'linear-gradient(135deg,#ea580c,#c2410c)',
       color: '#fff',
       initial: 'PS',
+      isFeatured: false,
       logo: 'logos/pepperstone.png'
     },
     // Crypto Exchanges
@@ -1602,6 +1618,7 @@
       bg: 'linear-gradient(135deg,#f0b90b,#b48805)',
       color: '#101322',
       initial: 'BN',
+      isFeatured: false,
       logo: 'logos/binance.png'
     },
     {
@@ -1613,6 +1630,7 @@
       bg: 'linear-gradient(135deg,#0052ff,#0039b3)',
       color: '#fff',
       initial: 'DE',
+      isFeatured: false,
       logo: 'logos/delta.png'
     },
     {
@@ -1624,6 +1642,7 @@
       bg: 'linear-gradient(135deg,#f7a600,#c68500)',
       color: '#101322',
       initial: 'BY',
+      isFeatured: false,
       logo: 'logos/bybit.png'
     },
     {
@@ -1635,11 +1654,12 @@
       bg: 'linear-gradient(135deg,#1877f2,#0d5cb6)',
       color: '#fff',
       initial: 'CD',
+      isFeatured: false,
       logo: 'logos/coindcx.png'
     }
   ];
 
-  let _activeBrokerModalCat = 'all';
+  let _activeBrokerModalCat = 'featured';
 
   function getConnectedBrokersMap() {
     const map = {};
@@ -1681,7 +1701,7 @@
 
     const connMap = getConnectedBrokersMap();
 
-    grid.innerHTML = SUPPORTED_BROKERS_CATALOG.map(broker => {
+    let html = SUPPORTED_BROKERS_CATALOG.map(broker => {
       const isConnected = !!(
         connMap[broker.id.toLowerCase()] ||
         connMap[broker.name.toLowerCase()] ||
@@ -1692,6 +1712,7 @@
         <div class="broker-catalog-card ${isConnected ? 'broker-card-connected' : ''}" 
           data-cat="${broker.category}" 
           data-id="${broker.id}"
+          data-featured="${broker.isFeatured ? 'true' : 'false'}"
           data-name="${escapeHtml(broker.name.toLowerCase())}"
           onclick="window.handleBrokerCatalogCardClick('${broker.id}', '${broker.category}', '${escapeHtml(broker.name)}', ${isConnected})"
           style="padding:14px 16px;background:#0d1120;border:1px solid ${isConnected ? 'rgba(72,183,154,0.35)' : 'rgba(255,255,255,0.08)'};border-radius:14px;cursor:pointer;display:flex;align-items:center;gap:12px;transition:all 0.2s cubic-bezier(0.16,1,0.3,1);position:relative;">
@@ -1717,6 +1738,15 @@
       `;
     }).join('');
 
+    // Add View All Expander Card in Featured mode
+    html += `
+      <div class="broker-catalog-card bk-view-all-card" id="bkViewAllExpanderCard" onclick="window.setBrokerModalCat('all');" style="grid-column: 1 / -1; padding: 13px 18px; background: rgba(224,169,78,0.07); border: 1px dashed rgba(224,169,78,0.4); border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s ease;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:var(--accent,#E0A94E);"><polyline points="6 9 12 15 18 9"/></svg>
+        <span style="font-size: 13px; font-weight: 700; color: var(--accent,#E0A94E);">View All 18+ Brokers &amp; Exchanges</span>
+      </div>
+    `;
+
+    grid.innerHTML = html;
     filterAllBrokersModal();
   }
 
@@ -1749,6 +1779,21 @@
     if (modal) {
       modal.style.display = 'flex';
       document.body.style.overflow = 'hidden';
+      _activeBrokerModalCat = 'featured';
+      
+      // Reset tab active styling
+      document.querySelectorAll('.broker-modal-tab').forEach(b => {
+        if (b.dataset.cat === 'featured') {
+          b.style.background = 'var(--accent)';
+          b.style.color = '#101322';
+          b.style.border = 'none';
+        } else {
+          b.style.background = 'rgba(255,255,255,0.05)';
+          b.style.color = 'var(--text)';
+          b.style.border = '1px solid rgba(255,255,255,0.1)';
+        }
+      });
+
       renderAllBrokersGrid();
       const searchInput = document.getElementById('allBrokersSearchInput');
       if (searchInput) {
@@ -1769,31 +1814,54 @@
   }
 
   function setBrokerModalCat(cat, btnEl) {
-    _activeBrokerModalCat = cat;
+    _activeBrokerModalCat = cat || 'all';
+    
     document.querySelectorAll('.broker-modal-tab').forEach(b => {
-      b.style.background = 'rgba(255,255,255,0.05)';
-      b.style.color = 'var(--text)';
-      b.style.border = '1px solid rgba(255,255,255,0.1)';
+      if (b === btnEl || (cat && b.dataset.cat === cat)) {
+        b.style.background = 'var(--accent)';
+        b.style.color = '#101322';
+        b.style.border = 'none';
+      } else {
+        b.style.background = 'rgba(255,255,255,0.05)';
+        b.style.color = 'var(--text)';
+        b.style.border = '1px solid rgba(255,255,255,0.1)';
+      }
     });
-    if (btnEl) {
-      btnEl.style.background = 'var(--accent)';
-      btnEl.style.color = '#101322';
-      btnEl.style.border = 'none';
-    }
+
     filterAllBrokersModal();
   }
 
   function filterAllBrokersModal() {
     const searchVal = (document.getElementById('allBrokersSearchInput')?.value || '').toLowerCase().trim();
     const cards = document.querySelectorAll('.broker-catalog-card');
+    const expander = document.getElementById('bkViewAllExpanderCard');
 
     cards.forEach(c => {
+      if (c === expander) {
+        if (_activeBrokerModalCat === 'featured' && !searchVal) {
+          c.style.display = 'flex';
+        } else {
+          c.style.display = 'none';
+        }
+        return;
+      }
+
       const cat = c.getAttribute('data-cat') || '';
+      const isFeatured = c.getAttribute('data-featured') === 'true';
       const name = (c.getAttribute('data-name') || '').toLowerCase();
-      const matchesCat = (_activeBrokerModalCat === 'all' || cat === _activeBrokerModalCat);
+      
+      let matchesCat = true;
+      if (_activeBrokerModalCat === 'featured') {
+        matchesCat = isFeatured;
+      } else if (_activeBrokerModalCat === 'all') {
+        matchesCat = true;
+      } else {
+        matchesCat = (cat === _activeBrokerModalCat);
+      }
+
       const matchesSearch = !searchVal || name.includes(searchVal);
 
-      if (matchesCat && matchesSearch) {
+      if ((searchVal && matchesSearch) || (!searchVal && matchesCat && matchesSearch)) {
         c.style.display = 'flex';
       } else {
         c.style.display = 'none';

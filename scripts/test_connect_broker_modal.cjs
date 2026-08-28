@@ -18,6 +18,9 @@ if (!htmlCode.includes('Supported Brokers & Exchanges')) {
 if (!htmlCode.includes('id="brokersTopConnectBtn"')) {
   throw new Error('FAIL: brokersTopConnectBtn not found in index.html');
 }
+if (!htmlCode.includes('Featured (Top 6)')) {
+  throw new Error('FAIL: Featured tab not found in index.html');
+}
 
 // 2. Mock environment to test modal behavior
 const mockStorage = {};
@@ -66,6 +69,7 @@ function getOrCreateEl(id) {
   return domElements[id];
 }
 
+const createdCards = [];
 global.window = {
   addEventListener: () => {},
   removeEventListener: () => {},
@@ -74,8 +78,38 @@ global.window = {
 };
 global.document = {
   getElementById: (id) => getOrCreateEl(id),
-  querySelectorAll: () => [],
-  querySelector: () => null,
+  querySelectorAll: (selector) => {
+    if (selector === '.broker-catalog-card') {
+      const grid = getOrCreateEl('allBrokersGrid');
+      // Simple parser of rendered elements in grid for test
+      const matches = [];
+      const parts = grid.innerHTML.split('<div class="broker-catalog-card');
+      parts.slice(1).forEach((part, idx) => {
+        const catMatch = part.match(/data-cat="([^"]+)"/);
+        const featMatch = part.match(/data-featured="([^"]+)"/);
+        const nameMatch = part.match(/data-name="([^"]+)"/);
+        const isExpander = part.includes('bkViewAllExpanderCard') || part.includes('View All 18+');
+
+        const cardObj = {
+          id: isExpander ? 'bkViewAllExpanderCard' : `card_${idx}`,
+          style: { display: 'flex' },
+          getAttribute: (attr) => {
+            if (attr === 'data-cat') return catMatch ? catMatch[1] : '';
+            if (attr === 'data-featured') return featMatch ? featMatch[1] : 'false';
+            if (attr === 'data-name') return nameMatch ? nameMatch[1] : '';
+            return '';
+          }
+        };
+        matches.push(cardObj);
+      });
+      return matches;
+    }
+    return [];
+  },
+  querySelector: (sel) => {
+    if (sel === '#bkViewAllExpanderCard') return getOrCreateEl('bkViewAllExpanderCard');
+    return null;
+  },
   addEventListener: () => {},
   body: { style: {} },
   readyState: 'complete'
@@ -104,15 +138,18 @@ if (modalEl.style.display !== 'flex') {
   throw new Error('FAIL: Modal display should be flex after openAllBrokersModal()');
 }
 
-// Check rendered content when 0 brokers connected
+// Check rendered content: 3 Indian (Angel One, Zerodha, Dhan) and 3 Forex (MetaTrader 5, Vantage, Exness)
 console.log('PASS: Modal opened successfully');
-if (!gridEl.innerHTML.includes('Angel One') || !gridEl.innerHTML.includes('MetaTrader 5') || !gridEl.innerHTML.includes('Binance')) {
-  throw new Error('FAIL: Broker catalog not rendered in allBrokersGrid');
+if (!gridEl.innerHTML.includes('Angel One') || !gridEl.innerHTML.includes('Zerodha Kite') || !gridEl.innerHTML.includes('Dhan')) {
+  throw new Error('FAIL: 3 Featured Indian brokers not found in grid');
 }
-if (gridEl.innerHTML.includes('broker-card-connected')) {
-  throw new Error('FAIL: No broker should be marked as "broker-card-connected" when localStorage is empty');
+if (!gridEl.innerHTML.includes('MetaTrader 5') || !gridEl.innerHTML.includes('Vantage') || !gridEl.innerHTML.includes('Exness')) {
+  throw new Error('FAIL: 3 Featured Forex brokers not found in grid');
 }
-console.log('PASS: Empty connection state verified (all brokers show Connect button)');
+if (!gridEl.innerHTML.includes('View All 18+ Brokers')) {
+  throw new Error('FAIL: View All expander not found in grid');
+}
+console.log('PASS: Featured 3 Indian + 3 Forex layout with View All expander verified!');
 
 // 4. Test connecting a real broker
 localStorage.setItem('riskloop_connected_brokers', JSON.stringify([

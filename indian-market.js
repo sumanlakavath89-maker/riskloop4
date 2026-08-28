@@ -305,6 +305,18 @@
     }
   }
 
+  function formatCalendarValue(val, unit = '') {
+    if (val === null || val === undefined || val === '' || val === '—' || val === '-') {
+      return '—';
+    }
+    const str = String(val).trim();
+    if (str === '—' || str === '' || str === 'null' || str === 'undefined') return '—';
+    if (unit && !str.includes(unit) && !isNaN(Number(str))) {
+      return `${str}${unit}`;
+    }
+    return str;
+  }
+
   function renderCalendarTable(tbody, state) {
     if (!tbody) return;
 
@@ -388,13 +400,13 @@
             <span class="impact-badge ${impactClass}">${impactLabel}</span>
           </td>
           <td class="cal-col-previous">
-            <div class="cal-value-cell">${event.previous || '—'}</div>
+            <div class="cal-value-cell">${formatCalendarValue(event.previous, event.unit)}</div>
           </td>
           <td class="cal-col-forecast">
-            <div class="cal-value-cell">${event.forecast || '—'}</div>
+            <div class="cal-value-cell">${formatCalendarValue(event.forecast, event.unit)}</div>
           </td>
           <td class="cal-col-actual">
-            <div class="cal-value-cell cal-actual">${event.actual || '—'}</div>
+            <div class="cal-value-cell cal-actual">${formatCalendarValue(event.actual, event.unit)}</div>
           </td>
         </tr>
       `;

@@ -119,10 +119,12 @@ function normalizeSupabaseEvent(raw, index) {
 
   const unit = raw.unit || '';
   const formatVal = (val) => {
-    if (val === null || val === undefined || val === '') return '—';
-    const num = parseFloat(val);
-    if (isNaN(num)) return String(val);
-    return unit ? `${num.toLocaleString('en-IN')}${unit}` : num.toLocaleString('en-IN');
+    if (val === null || val === undefined || val === '' || val === '—' || val === '-') return '—';
+    const str = String(val).trim();
+    if (str === '—' || str === '' || str === 'null' || str === 'undefined') return '—';
+    const num = parseFloat(str);
+    if (isNaN(num)) return str;
+    return unit && !str.includes(unit) ? `${num.toLocaleString('en-IN')}${unit}` : str;
   };
 
   return {

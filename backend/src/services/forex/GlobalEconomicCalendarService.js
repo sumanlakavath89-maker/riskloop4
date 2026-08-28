@@ -526,6 +526,13 @@ export class GlobalEconomicCalendarService {
     const timeStr = raw.event_time || raw.time || '12:00';
     const impactStr = (raw.impact || 'medium').toLowerCase();
 
+    const formatField = (val) => {
+      if (val === null || val === undefined || val === '' || val === '—' || val === '-') return null;
+      const str = String(val).trim();
+      if (str === '—' || str === '' || str === 'null' || str === 'undefined') return null;
+      return str;
+    };
+
     return {
       id: raw.id || `ev_${currency}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
       eventName: raw.event_name || raw.name || raw.indicator || 'Economic Release',
@@ -538,9 +545,9 @@ export class GlobalEconomicCalendarService {
       originalDate: dateStr,
       originalTime: timeStr,
       originalTimezone: raw.timezone || meta.timezone,
-      actual: raw.actual !== undefined ? raw.actual : null,
-      forecast: raw.forecast !== undefined ? raw.forecast : null,
-      previous: raw.previous !== undefined ? raw.previous : null,
+      actual: formatField(raw.actual),
+      forecast: formatField(raw.forecast),
+      previous: formatField(raw.previous),
       unit: raw.unit || '%',
       source: raw.source || meta.defaultSource,
       sourceName: raw.sourceName || meta.sourceName || raw.source || meta.defaultSource,

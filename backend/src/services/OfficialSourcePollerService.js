@@ -95,7 +95,13 @@ class OfficialSourcePollerService {
           discoveryOptions
         );
 
-        if (discoveryResult.found && discoveryResult.extractedMetric && discoveryResult.extractedMetric.actual) {
+        const hasActual = discoveryResult.found && discoveryResult.extractedMetric && 
+          discoveryResult.extractedMetric.actual !== undefined && 
+          discoveryResult.extractedMetric.actual !== null && 
+          discoveryResult.extractedMetric.actual !== '' &&
+          discoveryResult.extractedMetric.actual !== '—';
+
+        if (hasActual) {
           const metric = discoveryResult.extractedMetric;
           const candidate = discoveryResult.candidate;
 
@@ -107,12 +113,13 @@ class OfficialSourcePollerService {
               eventName: event.event_name,
               actual: metric.actual,
               previous: metric.previous,
+              forecast: metric.forecast,
               unit: metric.unit,
               sourceUrl: candidate.sourceUrl,
               source: event.source,
               releaseDate: event.event_date
             },
-            { dryRun }
+            { dryRun, targetRow: event }
           );
 
           if (updateRes.matched) {
@@ -147,6 +154,15 @@ class OfficialSourcePollerService {
         };
       }
 
+      // Schedule next polling retry
+      if (this.activePollingJobs.has(event.id)) {
+        jobRecord.timer = setTimeout(async () => {
+          if (this.activePollingJobs.has(event.id)) {
+            await executeAttempt();
+          }
+        }, intervalMs);
+      }
+
       return null;
     };
 
@@ -158,8 +174,8 @@ class OfficialSourcePollerService {
     return {
       success: true,
       status: 'polling',
-      message: `Poller active for ${event.event_name}`,
-      job: { eventId: event.id, attempts: jobRecord.attempts, maxAttempts }
+      message: `Poller active for ${event.event_name} with ${intervalMs}ms refresh interval`,
+      job: { eventId: event.id, attempts: jobRecord.attempts, maxAttempts, intervalMs }
     };
   }
 

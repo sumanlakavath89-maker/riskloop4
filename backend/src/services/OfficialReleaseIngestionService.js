@@ -160,12 +160,12 @@ class OfficialReleaseIngestionService {
       }
 
       const prevMatch =
-        combined.match(/(?:corresponding inflation rate for|previous month was|stood at)\s*([0-9]+(?:\.[0-9]+)?)\s*%/i);
+        combined.match(/(?:corresponding inflation rate for|previous month was|stood at|compared to|against)\s*([0-9]+(?:\.[0-9]+)?)\s*%/i);
       if (prevMatch) {
         previous = prevMatch[1];
       }
 
-      if (actual) {
+      if (actual !== null && actual !== undefined && actual !== '') {
         return {
           eventName: 'CPI Inflation',
           actual,
@@ -197,7 +197,7 @@ class OfficialReleaseIngestionService {
         previous = prevMatch[1];
       }
 
-      if (actual) {
+      if (actual !== null && actual !== undefined && actual !== '') {
         return {
           eventName: 'IIP',
           actual,
@@ -228,7 +228,7 @@ class OfficialReleaseIngestionService {
         previous = prevMatch[1];
       }
 
-      if (actual) {
+      if (actual !== null && actual !== undefined && actual !== '') {
         return {
           eventName: 'WPI Inflation',
           actual,
@@ -252,7 +252,7 @@ class OfficialReleaseIngestionService {
         actual = actualMatch[1];
       }
 
-      if (actual) {
+      if (actual !== null && actual !== undefined && actual !== '') {
         return {
           eventName: 'GDP',
           actual,
@@ -277,7 +277,7 @@ class OfficialReleaseIngestionService {
         actual = actualMatch[1];
       }
 
-      if (actual) {
+      if (actual !== null && actual !== undefined && actual !== '') {
         return {
           eventName: 'RBI Monetary Policy / Repo Rate',
           actual,
@@ -325,29 +325,40 @@ class OfficialReleaseIngestionService {
 
     if (findErr) throw findErr;
 
-    if (!matchedRows || matchedRows.length === 0) {
-      return {
-        matched: false,
-        error: 'EVENT_NOT_FOUND',
-        message: `No existing scheduled record found for ${eventName}`
-      };
-    }
-
-    // Pick closest matching row (prioritizing exact date or closest upcoming)
-    let targetRow = null;
-    if (releaseDate) {
-      targetRow = matchedRows.find(r => r.event_date === releaseDate);
-      if (!targetRow) {
-        // Find closest date
-        const targetTime = new Date(releaseDate).getTime();
-        targetRow = matchedRows.reduce((closest, curr) => {
-          const currDiff = Math.abs(new Date(curr.event_date).getTime() - targetTime);
-          const closestDiff = Math.abs(new Date(closest.event_date).getTime() - targetTime);
-          return currDiff < closestDiff ? curr : closest;
-        }, matchedRows[0]);
+    let targetRow = options.targetRow || null;
+    if (!targetRow) {
+      if (matchedRows && matchedRows.length > 0) {
+        if (releaseDate) {
+          targetRow = matchedRows.find(r => r.event_date === releaseDate);
+          if (!targetRow) {
+            const targetTime = new Date(releaseDate).getTime();
+            targetRow = matchedRows.reduce((closest, curr) => {
+              const currDiff = Math.abs(new Date(curr.event_date).getTime() - targetTime);
+              const closestDiff = Math.abs(new Date(closest.event_date).getTime() - targetTime);
+              return currDiff < closestDiff ? curr : closest;
+            }, matchedRows[0]);
+          }
+        } else {
+          targetRow = matchedRows.find(r => r.status === 'upcoming') || matchedRows[0];
+        }
+      } else if (dryRun) {
+        targetRow = {
+          id: `sim-${Date.now()}`,
+          event_name: eventName,
+          event_date: releaseDate || '2026-08-12',
+          event_time: '17:30:00',
+          status: 'upcoming',
+          actual: null,
+          previous: previous || null,
+          forecast: release.forecast || null
+        };
+      } else {
+        return {
+          matched: false,
+          error: 'EVENT_NOT_FOUND',
+          message: `No existing scheduled record found for ${eventName}`
+        };
       }
-    } else {
-      targetRow = matchedRows.find(r => r.status === 'upcoming') || matchedRows[0];
     }
 
     // 3. Strict Validation: Release Date & Timing Appropriateness
@@ -385,8 +396,11 @@ class OfficialReleaseIngestionService {
       updated_at: new Date().toISOString()
     };
 
-    if (previous !== null && previous !== undefined && previous !== '') {
+    if (previous !== null && previous !== undefined && previous !== '' && previous !== '—') {
       updatePayload.previous = String(previous);
+    }
+    if (release.forecast !== null && release.forecast !== undefined && release.forecast !== '' && release.forecast !== '—') {
+      updatePayload.forecast = String(release.forecast);
     }
     if (unit) {
       updatePayload.unit = unit;

@@ -183,9 +183,9 @@ class SupabaseEconomicCalendarService {
                 event_time: gen.event_time,
                 timezone: gen.timezone || 'Asia/Kolkata',
                 impact: gen.impact || 'medium',
-                previous: gen.previous,
-                forecast: gen.forecast,
-                actual: null,
+                previous: (gen.previous !== undefined && gen.previous !== null && gen.previous !== '' && gen.previous !== '—') ? String(gen.previous) : null,
+                forecast: (gen.forecast !== undefined && gen.forecast !== null && gen.forecast !== '' && gen.forecast !== '—') ? String(gen.forecast) : null,
+                actual: (gen.actual !== undefined && gen.actual !== null && gen.actual !== '' && gen.actual !== '—') ? String(gen.actual) : null,
                 unit: gen.unit || '%',
                 source: gen.source,
                 source_url: gen.source_url,
@@ -196,8 +196,8 @@ class SupabaseEconomicCalendarService {
 
             if (existing) {
                 // ── Preservation Rules ──
-                // 1. Preserve existing 'actual' value if already present
-                if (existing.actual !== null && existing.actual !== undefined && existing.actual !== '') {
+                // 1. Preserve existing 'actual' value if already present (even if 0 or 0.0)
+                if (existing.actual !== null && existing.actual !== undefined && existing.actual !== '' && existing.actual !== '—') {
                     recordToSave.actual = existing.actual;
                 }
 
@@ -211,11 +211,11 @@ class SupabaseEconomicCalendarService {
                     recordToSave.source_url = existing.source_url;
                 }
 
-                // 4. Preserve previous or forecast if already populated
-                if (existing.previous && !recordToSave.previous) {
+                // 4. Preserve previous or forecast if already populated and incoming is missing
+                if (existing.previous !== null && existing.previous !== undefined && existing.previous !== '' && existing.previous !== '—' && recordToSave.previous === null) {
                     recordToSave.previous = existing.previous;
                 }
-                if (existing.forecast && !recordToSave.forecast) {
+                if (existing.forecast !== null && existing.forecast !== undefined && existing.forecast !== '' && existing.forecast !== '—' && recordToSave.forecast === null) {
                     recordToSave.forecast = existing.forecast;
                 }
 

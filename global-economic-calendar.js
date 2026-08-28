@@ -37,6 +37,17 @@
     medium: { label: 'Medium', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.15)', border: 'rgba(245, 158, 11, 0.3)' },
     low: { label: 'Low', color: '#10b981', bg: 'rgba(16, 185, 129, 0.15)', border: 'rgba(16, 185, 129, 0.3)' }
   };
+  function formatCalendarValue(val, unit = '') {
+    if (val === null || val === undefined || val === '' || val === '—' || val === '-') {
+      return '—';
+    }
+    const str = String(val).trim();
+    if (str === '—' || str === '' || str === 'null' || str === 'undefined') return '—';
+    if (unit && !str.includes(unit) && !isNaN(Number(str))) {
+      return `${str}${unit}`;
+    }
+    return str;
+  }
 
   class GlobalEconomicCalendar {
     constructor(containerId = 'global-economic-calendar-root') {
@@ -311,14 +322,14 @@
               ${impactMeta.label}
             </span>
           </td>
-          <td style="padding: 12px 16px; text-align: right; font-weight: 700; color: ${ev.actual !== null ? '#10b981' : '#94a3b8'};">
-            ${ev.actual !== null ? `${ev.actual}${ev.unit || ''}` : '—'}
+          <td style="padding: 12px 16px; text-align: right; font-weight: 700; color: ${formatCalendarValue(ev.actual) !== '—' ? '#10b981' : '#94a3b8'};">
+            ${formatCalendarValue(ev.actual, ev.unit)}
           </td>
           <td style="padding: 12px 16px; text-align: right; color: #e2e8f0;">
-            ${ev.forecast !== null ? `${ev.forecast}${ev.unit || ''}` : '—'}
+            ${formatCalendarValue(ev.forecast, ev.unit)}
           </td>
           <td style="padding: 12px 16px; text-align: right; color: #94a3b8;">
-            ${ev.previous !== null ? `${ev.previous}${ev.unit || ''}` : '—'}
+            ${formatCalendarValue(ev.previous, ev.unit)}
           </td>
           <td style="padding: 12px 16px; font-size: 0.75rem; color: #94a3b8;">
             ${ev.source}

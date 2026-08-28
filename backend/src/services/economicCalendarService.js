@@ -191,6 +191,23 @@ class EconomicCalendarService {
     for (let i = 0; i < rawList.length; i++) {
       try {
         const normalized = this.normalizeRecord(rawList[i]);
+        const existing = this.events.get(normalized.id);
+
+        if (existing) {
+          // Preserve existing published actual if incoming is missing/dash
+          if (normalized.actual === '—' && existing.actual && existing.actual !== '—') {
+            normalized.actual = existing.actual;
+          }
+          // Preserve existing previous if incoming is missing/dash
+          if (normalized.previous === '—' && existing.previous && existing.previous !== '—') {
+            normalized.previous = existing.previous;
+          }
+          // Preserve existing forecast if incoming is missing/dash
+          if (normalized.forecast === '—' && existing.forecast && existing.forecast !== '—') {
+            normalized.forecast = existing.forecast;
+          }
+        }
+
         this.events.set(normalized.id, normalized);
         processed.push(normalized);
       } catch (err) {

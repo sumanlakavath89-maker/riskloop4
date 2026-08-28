@@ -160,9 +160,6 @@
   ];
 
   /* State */
-  let currentForexPeriod = 'today';
-  let currentCurrencyFilter = 'ALL';
-  let forexTimezoneMode = 'IST'; // 'IST' or 'UTC'
   let sessionUpdateInterval = null;
 
   /* ============================================================
@@ -304,6 +301,7 @@
   }
 
   function initForexEconomicCalendar() {
+    console.log('Forex calendar initializing');
     const periodButtons = document.querySelectorAll('#forexCalendarPeriodTabs .calendar-tab');
     const currencyButtons = document.querySelectorAll('#forexCurrencyFilters .forex-curr-btn');
     const viewAllBtn = document.getElementById('viewAllForexCalendarBtn');
@@ -363,6 +361,7 @@
   }
 
   async function loadForexCalendarData(period = currentForexPeriod, currency = currentCurrencyFilter, forceRefresh = false) {
+    console.log('Loading Forex calendar data');
     const tableBody = document.getElementById('forexCalendarTableBody');
     const navDate = document.getElementById('forexCalendarNavDate');
     if (!tableBody) return;

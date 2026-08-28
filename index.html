@@ -7501,7 +7501,7 @@
                 <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
                 <path d="M2 12h20" />
               </svg>
-              <span>Connected Brokers</span>
+              <span>Connected: Angel One</span>
               <svg class="dropdown-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="m6 9 6 6 6-6" />
@@ -7510,7 +7510,7 @@
             <div class="dropdown-menu portfolio-broker-dropdown-menu" id="portfolioBrokerDropdownMenu">
               <!-- 1. Combined Portfolio -->
               <div class="dropdown-item portfolio-broker-item portfolio-combined-item"
-                onclick="if(window.switchPortfolioBroker)window.switchPortfolioBroker('combined','Combined Portfolio');">
+                onclick="if(window.switchPortfolioBroker)window.switchPortfolioBroker('combined','Combined Portfolio','INR');">
                 <span class="portfolio-broker-logo combined-logo"
                   style="width:24px;height:24px;font-size:11px;border-radius:6px;background:linear-gradient(135deg, #e0a94e 0%, #f59e0b 50%, #38bdf8 100%);color:#101322;font-weight:800;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(224,169,78,0.3);">⚡</span>
                 <div style="flex:1;">
@@ -7522,8 +7522,8 @@
                   </div>
                   <div
                     style="font-size:10.5px;color:var(--text-muted);font-family:'IBM Plex Mono',monospace;display:flex;justify-content:space-between;margin-top:2px;">
-                    <span>Size: $5,000.00</span>
-                    <span class="text-profit">+₹93.2k ($18.5k)</span>
+                    <span>Size: ₹5,000.00</span>
+                    <span class="text-profit">+₹93.2k</span>
                   </div>
                 </div>
               </div>
@@ -7531,8 +7531,8 @@
               <div style="height:1px;background:rgba(255,255,255,0.06);margin:6px 0;"></div>
 
               <!-- 2. Angel One -->
-              <div class="dropdown-item portfolio-broker-item"
-                onclick="if(window.switchPortfolioBroker)window.switchPortfolioBroker('india','Angel One');">
+              <div class="dropdown-item portfolio-broker-item active"
+                onclick="if(window.switchPortfolioBroker)window.switchPortfolioBroker('india','Angel One','INR');">
                 <span class="portfolio-broker-logo"
                   style="width:24px;height:24px;font-size:10px;font-weight:800;border-radius:6px;background:linear-gradient(135deg, #ff416c, #ff4b2b);color:#fff;display:flex;align-items:center;justify-content:center;">A</span>
                 <div style="flex:1;">
@@ -7551,7 +7551,7 @@
 
               <!-- 3. Dhan -->
               <div class="dropdown-item portfolio-broker-item"
-                onclick="if(window.switchPortfolioBroker)window.switchPortfolioBroker('india','Dhan HQ');">
+                onclick="if(window.switchPortfolioBroker)window.switchPortfolioBroker('india','Dhan HQ','INR');">
                 <span class="portfolio-broker-logo dhan-logo"
                   style="width:24px;height:24px;font-size:10px;border-radius:6px;">D</span>
                 <div style="flex:1;">
@@ -7570,7 +7570,7 @@
 
               <!-- 4. Upstox -->
               <div class="dropdown-item portfolio-broker-item"
-                onclick="if(window.switchPortfolioBroker)window.switchPortfolioBroker('india','Upstox');">
+                onclick="if(window.switchPortfolioBroker)window.switchPortfolioBroker('india','Upstox','INR');">
                 <span class="portfolio-broker-logo"
                   style="width:24px;height:24px;font-size:10px;font-weight:800;border-radius:6px;background:linear-gradient(135deg, #7928ca, #4338ca);color:#fff;display:flex;align-items:center;justify-content:center;">U</span>
                 <div style="flex:1;">
@@ -7589,7 +7589,7 @@
 
               <!-- 5. MT5 (MetaTrader 5) -->
               <div class="dropdown-item portfolio-broker-item"
-                onclick="if(window.switchPortfolioBroker)window.switchPortfolioBroker('forex','MetaTrader 5');">
+                onclick="if(window.switchPortfolioBroker)window.switchPortfolioBroker('forex','MetaTrader 5','USD');">
                 <span class="portfolio-broker-logo mt-logo"
                   style="width:24px;height:24px;font-size:10px;border-radius:6px;">MT</span>
                 <div style="flex:1;">
@@ -7608,7 +7608,7 @@
 
               <!-- 6. Vantage -->
               <div class="dropdown-item portfolio-broker-item"
-                onclick="if(window.switchPortfolioBroker)window.switchPortfolioBroker('forex','Vantage');">
+                onclick="if(window.switchPortfolioBroker)window.switchPortfolioBroker('forex','Vantage','USD');">
                 <span class="portfolio-broker-logo"
                   style="width:24px;height:24px;font-size:10px;font-weight:800;border-radius:6px;background:linear-gradient(135deg, #0284c7, #0369a1);color:#fff;display:flex;align-items:center;justify-content:center;">V</span>
                 <div style="flex:1;">
@@ -7663,8 +7663,8 @@
               <button class="portfolio-curr-btn" id="portfolioCurrencyBtn" type="button"
                 onclick="if(window.togglePortfolioDropdown)window.togglePortfolioDropdown('portfolioCurrencyDropdown',event);else{event.stopPropagation();document.getElementById('portfolioCurrencyDropdown')?.classList.toggle('dropdown-open');}"
                 aria-label="Select Base Currency">
-                <span class="portfolio-curr-flag" id="portfolioCurrFlag">💵</span>
-                <span id="portfolioCurrLabel">USD ($)</span>
+                <span class="portfolio-curr-flag" id="portfolioCurrFlag">🇮🇳</span>
+                <span id="portfolioCurrLabel">INR (₹)</span>
                 <svg class="dropdown-chevron" width="13" height="13" viewBox="0 0 24 24" fill="none"
                   stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="m6 9 6 6 6-6" />
@@ -7678,17 +7678,7 @@
                   Display Currency
                 </div>
 
-                <div class="dropdown-item portfolio-curr-item active" data-curr="USD"
-                  onclick="if(window.setPortfolioCurrency)window.setPortfolioCurrency('USD');">
-                  <span style="display:flex;align-items:center;gap:8px;">
-                    <span style="font-size:14px;">💵</span>
-                    <strong>USD</strong> <span style="color:var(--text-muted);font-size:11px;">US Dollar</span>
-                  </span>
-                  <span class="portfolio-curr-symbol"
-                    style="font-family:'IBM Plex Mono',monospace;font-weight:700;color:var(--accent);">$</span>
-                </div>
-
-                <div class="dropdown-item portfolio-curr-item" data-curr="INR"
+                <div class="dropdown-item portfolio-curr-item active" data-curr="INR"
                   onclick="if(window.setPortfolioCurrency)window.setPortfolioCurrency('INR');">
                   <span style="display:flex;align-items:center;gap:8px;">
                     <span style="font-size:14px;">🇮🇳</span>
@@ -7696,6 +7686,16 @@
                   </span>
                   <span class="portfolio-curr-symbol"
                     style="font-family:'IBM Plex Mono',monospace;font-weight:700;color:var(--accent);">₹</span>
+                </div>
+
+                <div class="dropdown-item portfolio-curr-item" data-curr="USD"
+                  onclick="if(window.setPortfolioCurrency)window.setPortfolioCurrency('USD');">
+                  <span style="display:flex;align-items:center;gap:8px;">
+                    <span style="font-size:14px;">💵</span>
+                    <strong>USD</strong> <span style="color:var(--text-muted);font-size:11px;">US Dollar</span>
+                  </span>
+                  <span class="portfolio-curr-symbol"
+                    style="font-family:'IBM Plex Mono',monospace;font-weight:700;color:var(--accent);">$</span>
                 </div>
 
                 <div class="dropdown-item portfolio-curr-item" data-curr="EUR"
@@ -7765,7 +7765,7 @@
                 </svg>
                 <span>Account Size</span>
               </div>
-              <div class="portfolio-stat-val" id="psAccountSize">$5,000.00</div>
+              <div class="portfolio-stat-val" id="psAccountSize">₹5,000.00</div>
             </div>
 
             <div class="jcard portfolio-top-stat-card">
@@ -7777,7 +7777,7 @@
                 </svg>
                 <span>Today's Profit</span>
               </div>
-              <div class="portfolio-stat-val" id="psTodayProfit">$0.00</div>
+              <div class="portfolio-stat-val" id="psTodayProfit">₹0.00</div>
             </div>
           </div>
 
@@ -7810,14 +7810,14 @@
               <div class="portfolio-bal-group">
                 <div class="portfolio-bal-row">
                   <span class="portfolio-bal-label">Balance</span>
-                  <span class="portfolio-bal-val" id="psBalanceVal">$4,631.66</span>
+                  <span class="portfolio-bal-val" id="psBalanceVal">₹4,63,166.00</span>
                 </div>
                 <div class="portfolio-slider-track">
                   <div class="portfolio-slider-bar" style="width: 78%;">
                     <span class="portfolio-slider-handle"></span>
                   </div>
                 </div>
-                <div class="portfolio-bal-max" id="psBalanceMax">$5,065.58 Max</div>
+                <div class="portfolio-bal-max" id="psBalanceMax">₹5,06,558.00 Max</div>
               </div>
 
               <div class="portfolio-bal-divider"></div>
@@ -7826,14 +7826,14 @@
               <div class="portfolio-bal-group">
                 <div class="portfolio-bal-row">
                   <span class="portfolio-bal-label">Equity</span>
-                  <span class="portfolio-bal-val" id="psEquityVal">$4,631.66</span>
+                  <span class="portfolio-bal-val" id="psEquityVal">₹4,63,166.00</span>
                 </div>
                 <div class="portfolio-slider-track">
                   <div class="portfolio-slider-bar" style="width: 78%;">
                     <span class="portfolio-slider-handle"></span>
                   </div>
                 </div>
-                <div class="portfolio-bal-max" id="psEquityMax">$5,124.10 Max</div>
+                <div class="portfolio-bal-max" id="psEquityMax">₹5,12,410.00 Max</div>
               </div>
             </div>
           </div>
@@ -7870,7 +7870,7 @@
                 </svg>
                 <span>Average Win</span>
               </div>
-              <div class="portfolio-stat-val text-profit" id="pmAvgWin">$42.06</div>
+              <div class="portfolio-stat-val text-profit" id="pmAvgWin">+₹4,320.00</div>
             </div>
 
             <!-- 2. Win Ratio -->
@@ -7884,7 +7884,7 @@
                 </svg>
                 <span>Win Ratio</span>
               </div>
-              <div class="portfolio-stat-val" id="pmWinRate">42.0%</div>
+              <div class="portfolio-stat-val" id="pmWinRate">64.2%</div>
             </div>
 
             <!-- 3. Average Loss -->
@@ -7897,7 +7897,7 @@
                 </svg>
                 <span>Average Loss</span>
               </div>
-              <div class="portfolio-stat-val text-loss" id="pmAvgLoss">-$35.35</div>
+              <div class="portfolio-stat-val text-loss" id="pmAvgLoss">-₹1,850.00</div>
             </div>
 
             <!-- 4. Profit Factor -->
@@ -7911,7 +7911,7 @@
                 </svg>
                 <span>Profit Factor</span>
               </div>
-              <div class="portfolio-stat-val" id="pmProfitFactor">0.87</div>
+              <div class="portfolio-stat-val" id="pmProfitFactor">2.68</div>
             </div>
           </div>
 

@@ -8,61 +8,78 @@
   'use strict';
 
   // State: 'combined', 'india', or 'forex'
-  let _activeMarket = 'combined'; 
+  let _activeMarket = 'india'; // Default to connected Indian broker (Angel One)
   let _activeTimeframe = '1M';  // '1W', '1M', '3M', '1Y', 'ALL'
-  let _selectedCurrency = 'USD'; // 'USD', 'INR', 'EUR', 'GBP', 'JPY', 'AED', 'CAD'
+  let _selectedCurrency = 'INR'; // 'INR', 'USD', 'EUR', 'GBP', 'JPY', 'AED', 'CAD'
+  let _currentBrokerName = 'Angel One';
 
-  // ── Multi-Currency Configuration & Exchange Rates (Base USD) ──
+  // ── Multi-Currency Configuration & Exchange Rates ──
   const CURRENCIES = {
-    USD: { code: 'USD', symbol: '$', flag: '💵', label: 'USD ($)', rate: 1.0, precision: 2, prefix: '$' },
-    INR: { code: 'INR', symbol: '₹', flag: '🇮🇳', label: 'INR (₹)', rate: 83.5, precision: 2, prefix: '₹' },
-    EUR: { code: 'EUR', symbol: '€', flag: '🇪🇺', label: 'EUR (€)', rate: 0.92, precision: 2, prefix: '€' },
-    GBP: { code: 'GBP', symbol: '£', flag: '🇬🇧', label: 'GBP (£)', rate: 0.78, precision: 2, prefix: '£' },
-    JPY: { code: 'JPY', symbol: '¥', flag: '🇯🇵', label: 'JPY (¥)', rate: 155.0, precision: 0, prefix: '¥' },
-    AED: { code: 'AED', symbol: 'د.إ', flag: '🇦🇪', label: 'AED (د.إ)', rate: 3.67, precision: 2, prefix: 'AED ' },
-    CAD: { code: 'CAD', symbol: 'C$', flag: '🇨🇦', label: 'CAD (C$)', rate: 1.37, precision: 2, prefix: 'C$' }
+    INR: { code: 'INR', symbol: '₹', flag: '🇮🇳', label: 'INR (₹)', locale: 'en-IN', rate: 83.5, precision: 2, prefix: '₹' },
+    USD: { code: 'USD', symbol: '$', flag: '💵', label: 'USD ($)', locale: 'en-US', rate: 1.0, precision: 2, prefix: '$' },
+    EUR: { code: 'EUR', symbol: '€', flag: '🇪🇺', label: 'EUR (€)', locale: 'de-DE', rate: 0.92, precision: 2, prefix: '€' },
+    GBP: { code: 'GBP', symbol: '£', flag: '🇬🇧', label: 'GBP (£)', locale: 'en-GB', rate: 0.78, precision: 2, prefix: '£' },
+    JPY: { code: 'JPY', symbol: '¥', flag: '🇯🇵', label: 'JPY (¥)', locale: 'ja-JP', rate: 155.0, precision: 0, prefix: '¥' },
+    AED: { code: 'AED', symbol: 'د.إ', flag: '🇦🇪', label: 'AED (د.إ)', locale: 'ar-AE', rate: 3.67, precision: 2, prefix: 'AED ' },
+    CAD: { code: 'CAD', symbol: 'C$', flag: '🇨🇦', label: 'CAD (C$)', locale: 'en-CA', rate: 1.37, precision: 2, prefix: 'C$' }
   };
 
   /**
-   * Currency formatter helper
-   * @param {number} amountUSD - Base amount in USD
+   * Universal Reusable Currency Formatter using Intl.NumberFormat
+   * @param {number} amount - Monetary amount to format
+   * @param {string} currencyCode - 'INR', 'USD', 'EUR', 'GBP', etc.
    * @param {Object} opts - { signed: boolean, precision: number, absolute: boolean }
    */
-  function formatMoney(amountUSD, opts = {}) {
-    const curr = CURRENCIES[_selectedCurrency] || CURRENCIES.USD;
-    const rate = curr.rate || 1.0;
+  function formatBrokerCurrency(amount, currencyCode = 'INR', opts = {}) {
+    const code = (currencyCode || 'INR').toUpperCase();
+    const curr = CURRENCIES[code] || CURRENCIES.INR;
+    const num = Number(amount) || 0;
+    const isNegative = num < 0;
+    const absVal = Math.abs(num);
     const precision = opts.precision !== undefined ? opts.precision : (curr.precision !== undefined ? curr.precision : 2);
-    const converted = (amountUSD || 0) * rate;
-    const isNegative = converted < 0;
-    const absVal = Math.abs(converted);
 
-    let formattedNum = '';
-    if (curr.code === 'INR') {
-      formattedNum = absVal.toLocaleString('en-IN', {
+    let formatted = '';
+    try {
+      formatted = new Intl.NumberFormat(curr.locale || 'en-IN', {
+        style: 'currency',
+        currency: curr.code,
         minimumFractionDigits: precision,
         maximumFractionDigits: precision
-      });
-    } else {
-      formattedNum = absVal.toLocaleString('en-US', {
-        minimumFractionDigits: precision,
-        maximumFractionDigits: precision
-      });
+      }).format(absVal);
+    } catch (e) {
+      formatted = `${curr.prefix}${absVal.toLocaleString(curr.locale || 'en-IN', { minimumFractionDigits: precision, maximumFractionDigits: precision })}`;
     }
 
     if (opts.absolute) {
-      return `${curr.prefix}${formattedNum}`;
+      return formatted;
     }
-
     if (opts.signed) {
-      if (converted > 0) return `+${curr.prefix}${formattedNum}`;
-      if (converted < 0) return `-${curr.prefix}${formattedNum}`;
-      return `${curr.prefix}${formattedNum}`;
+      if (num > 0) return `+${formatted}`;
+      if (num < 0) return `-${formatted}`;
+      return formatted;
     }
-
     if (isNegative) {
-      return `-${curr.prefix}${formattedNum}`;
+      return `-${formatted}`;
     }
-    return `${curr.prefix}${formattedNum}`;
+    return formatted;
+  }
+
+  window.formatBrokerCurrency = formatBrokerCurrency;
+
+  function getEffectiveCurrency() {
+    if (_activeMarket === 'india') return 'INR';
+    if (_activeMarket === 'forex') return 'USD';
+    return _selectedCurrency || 'INR';
+  }
+
+  /**
+   * Currency formatter helper for portfolio views
+   * @param {number} amount - Monetary amount
+   * @param {Object} opts - { signed: boolean, precision: number, absolute: boolean }
+   */
+  function formatMoney(amount, opts = {}) {
+    const effCurr = getEffectiveCurrency();
+    return formatBrokerCurrency(amount, effCurr, opts);
   }
 
   // ── Combined Portfolio Dataset (Base USD for all currencies) ──
@@ -348,6 +365,15 @@
 
   // Indian Portfolio Dataset
   const INDIA_DATA = {
+    topStats: {
+      accountSize: 5000.00,
+      todayProfit: 0.00,
+      score: '2.84',
+      balance: 463166.00,
+      balanceMax: 506558.00,
+      equity: 463166.00,
+      equityMax: 512410.00
+    },
     metrics: {
       winRate: 64.2,
       wins: 52,
@@ -477,6 +503,15 @@
 
   // Forex Portfolio Dataset
   const FOREX_DATA = {
+    topStats: {
+      accountSize: 5000.00,
+      todayProfit: 0.00,
+      score: '2.84',
+      balance: 4631.66,
+      balanceMax: 5065.58,
+      equity: 4631.66,
+      equityMax: 5124.10
+    },
     metrics: {
       winRate: 66.7,
       wins: 48,
@@ -576,12 +611,8 @@
   };
 
   function fmtCurrency(val, isForex) {
-    if (isForex) {
-      const abs = Math.abs(val).toLocaleString('en-US');
-      return val >= 0 ? `+$${abs}` : `-$${abs}`;
-    }
-    const abs = Math.abs(val).toLocaleString('en-IN');
-    return val >= 0 ? `+₹${abs}` : `−₹${abs}`;
+    const code = isForex ? 'USD' : (_activeMarket === 'india' ? 'INR' : getEffectiveCurrency());
+    return formatBrokerCurrency(val, code, { signed: true });
   }
 
   /* ── Hexagonal Radar Score Canvas Render ── */
@@ -725,7 +756,8 @@
     const h = cssH - pad.t - pad.b;
 
     const isCombined = _activeMarket === 'combined';
-    const curr = CURRENCIES[_selectedCurrency] || CURRENCIES.USD;
+    const effCurr = getEffectiveCurrency();
+    const curr = CURRENCIES[effCurr] || CURRENCIES.INR;
     const rate = isCombined ? (curr.rate || 1.0) : 1.0;
 
     const bals = pts.map(p => (p.balanceUSD !== undefined ? p.balanceUSD * rate : (p.balance || 0)));
@@ -754,18 +786,12 @@
       ctx.textAlign = 'right';
 
       let label = '';
-      if (isCombined) {
-        if (curr.code === 'INR') {
-          label = `₹${(gVal / 100000).toFixed(1)}L`;
-        } else if (curr.code === 'JPY') {
-          label = `¥${Math.round(gVal / 1000)}k`;
-        } else {
-          label = `${curr.prefix}${Math.round(gVal / 1000)}k`;
-        }
-      } else if (_activeMarket === 'forex') {
-        label = `$${Math.round(gVal / 1000)}k`;
+      if (effCurr === 'INR') {
+        label = gVal >= 100000 ? `₹${(gVal / 100000).toFixed(1)}L` : (gVal >= 1000 ? `₹${(gVal / 1000).toFixed(1)}k` : `₹${Math.round(gVal)}`);
+      } else if (effCurr === 'JPY') {
+        label = `¥${Math.round(gVal / 1000)}k`;
       } else {
-        label = `₹${(gVal / 100000).toFixed(1)}L`;
+        label = `${curr.prefix}${Math.round(gVal >= 1000 ? gVal / 1000 : gVal)}${gVal >= 1000 ? 'k' : ''}`;
       }
 
       ctx.fillText(label, pad.l - 8, gy + 3);
@@ -879,13 +905,14 @@
     ctx.fillText('0 (BE)', pad.l - 8, zeroY + 3);
 
     // Top & bottom grid labels
-    const isFx = _activeMarket === 'forex';
+    const effCurr = getEffectiveCurrency();
+    const curr = CURRENCIES[effCurr] || CURRENCIES.INR;
     const topStep1 = maxAbs * 0.5;
     const topStep2 = maxAbs * 0.9;
     const botStep1 = -maxAbs * 0.5;
     const botStep2 = -maxAbs * 0.9;
 
-    const fmtP = v => isFx ? `$${Math.round(v)}` : `₹${Math.round(v / 1000)}k`;
+    const fmtP = v => effCurr === 'INR' ? `₹${Math.round(v / 1000)}k` : `${curr.prefix}${Math.round(v)}`;
 
     [topStep2, topStep1, botStep1, botStep2].forEach(val => {
       const y = toY(val);
@@ -1687,6 +1714,8 @@
     const isFx = _activeMarket === 'forex';
     const isCombined = _activeMarket === 'combined';
 
+    const effCurr = getEffectiveCurrency();
+
     // 1. Core 7 Metric Cards
     const elWinRate = document.getElementById('pmWinRate');
     const elAvgWin = document.getElementById('pmAvgWin');
@@ -1700,25 +1729,25 @@
 
     if (elAvgWin) {
       if (isCombined && data.metrics.avgWinUSD !== undefined) {
-        elAvgWin.textContent = formatMoney(data.metrics.avgWinUSD, { signed: true });
+        elAvgWin.textContent = formatBrokerCurrency(data.metrics.avgWinUSD, effCurr, { signed: true });
       } else {
-        elAvgWin.textContent = data.metrics.avgWinText || fmtCurrency(data.metrics.avgWin, isFx);
+        elAvgWin.textContent = formatBrokerCurrency(data.metrics.avgWin, effCurr, { signed: true });
       }
     }
 
     if (elAvgLoss) {
       if (isCombined && data.metrics.avgLossUSD !== undefined) {
-        elAvgLoss.textContent = formatMoney(data.metrics.avgLossUSD, { signed: true });
+        elAvgLoss.textContent = formatBrokerCurrency(data.metrics.avgLossUSD, effCurr, { signed: true });
       } else {
-        elAvgLoss.textContent = data.metrics.avgLossText || fmtCurrency(data.metrics.avgLoss, isFx);
+        elAvgLoss.textContent = formatBrokerCurrency(data.metrics.avgLoss, effCurr, { signed: true });
       }
     }
 
     if (elBigWin) {
       if (isCombined && data.metrics.bigWinUSD !== undefined) {
-        elBigWin.textContent = formatMoney(data.metrics.bigWinUSD, { signed: true });
+        elBigWin.textContent = formatBrokerCurrency(data.metrics.bigWinUSD, effCurr, { signed: true });
       } else {
-        elBigWin.textContent = fmtCurrency(data.metrics.bigWin, isFx);
+        elBigWin.textContent = formatBrokerCurrency(data.metrics.bigWin, effCurr, { signed: true });
       }
       const sub = document.getElementById('pmBigWinSub');
       if (sub) sub.textContent = data.metrics.bigWinSymbol || '';
@@ -1726,9 +1755,9 @@
 
     if (elBigLoss) {
       if (isCombined && data.metrics.bigLossUSD !== undefined) {
-        elBigLoss.textContent = formatMoney(data.metrics.bigLossUSD, { signed: true });
+        elBigLoss.textContent = formatBrokerCurrency(data.metrics.bigLossUSD, effCurr, { signed: true });
       } else {
-        elBigLoss.textContent = fmtCurrency(data.metrics.bigLoss, isFx);
+        elBigLoss.textContent = formatBrokerCurrency(data.metrics.bigLoss, effCurr, { signed: true });
       }
       const sub = document.getElementById('pmBigLossSub');
       if (sub) sub.textContent = data.metrics.bigLossSymbol || '';
@@ -1751,26 +1780,28 @@
 
     if (elLongPnl) {
       if (isCombined && ls.long.pnlUSD !== undefined) {
-        elLongPnl.textContent = formatMoney(ls.long.pnlUSD, { signed: true });
+        elLongPnl.textContent = formatBrokerCurrency(ls.long.pnlUSD, effCurr, { signed: true });
       } else {
-        elLongPnl.textContent = ls.long.pnlText || fmtCurrency(ls.long.pnl, isFx);
+        elLongPnl.textContent = formatBrokerCurrency(ls.long.pnl, effCurr, { signed: true });
       }
     }
     if (elLongWinsLabel) elLongWinsLabel.textContent = ls.long.winsLabel || `Wins (${ls.long.wins})`;
     if (elLongWinsVal) {
       if (isCombined && ls.long.winsValUSD !== undefined) {
-        elLongWinsVal.textContent = formatMoney(ls.long.winsValUSD);
+        elLongWinsVal.textContent = formatBrokerCurrency(ls.long.winsValUSD, effCurr);
       } else {
-        elLongWinsVal.textContent = ls.long.winsVal || fmtCurrency(ls.long.wins * 42, isFx);
+        const val = ls.long.winsVal !== undefined ? ls.long.winsVal : (ls.long.wins * (effCurr === 'INR' ? 2072 : 42));
+        elLongWinsVal.textContent = formatBrokerCurrency(val, effCurr);
       }
     }
     if (elLongWr) elLongWr.textContent = `${ls.long.winRate}%`;
     if (elLongLossesLabel) elLongLossesLabel.textContent = ls.long.lossesLabel || `Losses (${ls.long.losses})`;
     if (elLongLossesVal) {
       if (isCombined && ls.long.lossesValUSD !== undefined) {
-        elLongLossesVal.textContent = formatMoney(ls.long.lossesValUSD);
+        elLongLossesVal.textContent = formatBrokerCurrency(ls.long.lossesValUSD, effCurr);
       } else {
-        elLongLossesVal.textContent = ls.long.lossesVal || fmtCurrency(-Math.abs(ls.long.losses * 35), isFx);
+        const val = ls.long.lossesVal !== undefined ? ls.long.lossesVal : -(ls.long.losses * (effCurr === 'INR' ? 1720 : 35));
+        elLongLossesVal.textContent = formatBrokerCurrency(val, effCurr);
       }
     }
     if (elLongTrades) elLongTrades.textContent = `${ls.long.trades} trades (${ls.long.wins}W · ${ls.long.losses}L)`;
@@ -1789,26 +1820,28 @@
 
     if (elShortPnl) {
       if (isCombined && ls.short.pnlUSD !== undefined) {
-        elShortPnl.textContent = formatMoney(ls.short.pnlUSD, { signed: true });
+        elShortPnl.textContent = formatBrokerCurrency(ls.short.pnlUSD, effCurr, { signed: true });
       } else {
-        elShortPnl.textContent = ls.short.pnlText || fmtCurrency(ls.short.pnl, isFx);
+        elShortPnl.textContent = formatBrokerCurrency(ls.short.pnl, effCurr, { signed: true });
       }
     }
     if (elShortWinsLabel) elShortWinsLabel.textContent = ls.short.winsLabel || `Wins (${ls.short.wins})`;
     if (elShortWinsVal) {
       if (isCombined && ls.short.winsValUSD !== undefined) {
-        elShortWinsVal.textContent = formatMoney(ls.short.winsValUSD);
+        elShortWinsVal.textContent = formatBrokerCurrency(ls.short.winsValUSD, effCurr);
       } else {
-        elShortWinsVal.textContent = ls.short.winsVal || fmtCurrency(ls.short.wins * 35, isFx);
+        const val = ls.short.winsVal !== undefined ? ls.short.winsVal : (ls.short.wins * (effCurr === 'INR' ? 1725 : 35));
+        elShortWinsVal.textContent = formatBrokerCurrency(val, effCurr);
       }
     }
     if (elShortWr) elShortWr.textContent = `${ls.short.winRate}%`;
     if (elShortLossesLabel) elShortLossesLabel.textContent = ls.short.lossesLabel || `Losses (${ls.short.losses})`;
     if (elShortLossesVal) {
       if (isCombined && ls.short.lossesValUSD !== undefined) {
-        elShortLossesVal.textContent = formatMoney(ls.short.lossesValUSD);
+        elShortLossesVal.textContent = formatBrokerCurrency(ls.short.lossesValUSD, effCurr);
       } else {
-        elShortLossesVal.textContent = ls.short.lossesVal || fmtCurrency(-Math.abs(ls.short.losses * 37), isFx);
+        const val = ls.short.lossesVal !== undefined ? ls.short.lossesVal : -(ls.short.losses * (effCurr === 'INR' ? 1820 : 37));
+        elShortLossesVal.textContent = formatBrokerCurrency(val, effCurr);
       }
     }
     if (elShortTrades) elShortTrades.textContent = `${ls.short.trades} trades (${ls.short.wins}W · ${ls.short.losses}L)`;
@@ -1848,7 +1881,7 @@
         if (elIndWr) elIndWr.textContent = `${mk.indian.winRate}% Win Rate`;
         if (elIndBar) elIndBar.style.width = `${mk.indian.winRate}%`;
         if (elIndTrades) elIndTrades.textContent = mk.indian.tradesText;
-        if (elIndPnl) elIndPnl.textContent = `${formatMoney(mk.indian.pnlUSD, { signed: true })} P&L`;
+        if (elIndPnl) elIndPnl.textContent = `${formatBrokerCurrency(mk.indian.pnlUSD, effCurr, { signed: true })} P&L`;
 
         // 2. Forex Market Card
         const elFxWr = document.getElementById('pmkForexWinRate');
@@ -1859,7 +1892,7 @@
         if (elFxWr) elFxWr.textContent = `${mk.forex.winRate}% Win Rate`;
         if (elFxBar) elFxBar.style.width = `${mk.forex.winRate}%`;
         if (elFxTrades) elFxTrades.textContent = mk.forex.tradesText;
-        if (elFxPnl) elFxPnl.textContent = `${formatMoney(mk.forex.pnlUSD, { signed: true })} P&L`;
+        if (elFxPnl) elFxPnl.textContent = `${formatBrokerCurrency(mk.forex.pnlUSD, effCurr, { signed: true })} P&L`;
 
         // 3. Crypto Market Card
         const elCrWr = document.getElementById('pmkCryptoWinRate');
@@ -1870,7 +1903,7 @@
         if (elCrWr) elCrWr.textContent = `${mk.crypto.winRate}% Win Rate`;
         if (elCrBar) elCrBar.style.width = `${mk.crypto.winRate}%`;
         if (elCrTrades) elCrTrades.textContent = mk.crypto.tradesText;
-        if (elCrPnl) elCrPnl.textContent = `${formatMoney(mk.crypto.pnlUSD, { signed: true })} P&L`;
+        if (elCrPnl) elCrPnl.textContent = `${formatBrokerCurrency(mk.crypto.pnlUSD, effCurr, { signed: true })} P&L`;
       }
     } else if (_activeMarket === 'forex') {
       if (combinedView) combinedView.hidden = true;
@@ -1906,7 +1939,7 @@
 
       if (elStkWr) elStkWr.textContent = `${stk.winRate}% Win Rate`;
       if (elStkPnl) {
-        elStkPnl.textContent = stk.pnlText ? `${stk.pnlText} P&L` : `${fmtCurrency(stk.pnl, false)} P&L`;
+        elStkPnl.textContent = `${formatBrokerCurrency(stk.pnl, effCurr, { signed: true })} P&L`;
       }
       if (elStkTrades) elStkTrades.textContent = stk.tradesText || `${stk.trades} trades (${stk.wins}W · ${stk.losses}L)`;
 
@@ -1916,7 +1949,7 @@
 
       if (elFoWr) elFoWr.textContent = `${fo.winRate}% Win Rate`;
       if (elFoPnl) {
-        elFoPnl.textContent = fo.pnlText ? `${fo.pnlText} P&L` : `${fmtCurrency(fo.pnl, false)} P&L`;
+        elFoPnl.textContent = `${formatBrokerCurrency(fo.pnl, effCurr, { signed: true })} P&L`;
       }
       if (elFoTrades) elFoTrades.textContent = fo.tradesText || `${fo.trades} trades (${fo.wins}W · ${fo.losses}L)`;
     }
@@ -1928,10 +1961,10 @@
         let pnlText = '';
         let isWin = true;
         if (isCombined && s.pnlUSD !== undefined) {
-          pnlText = formatMoney(s.pnlUSD, { signed: true });
+          pnlText = formatBrokerCurrency(s.pnlUSD, effCurr, { signed: true });
           isWin = s.pnlUSD >= 0;
         } else {
-          pnlText = s.pnlText || fmtCurrency(s.pnl, isFx);
+          pnlText = formatBrokerCurrency(s.pnl, effCurr, { signed: true });
           isWin = s.pnl !== undefined ? s.pnl >= 0 : !pnlText.includes('−') && !pnlText.includes('-');
         }
 
@@ -1965,22 +1998,21 @@
     const elEqVal = document.getElementById('psEquityVal');
     const elEqMax = document.getElementById('psEquityMax');
 
-    if (isCombined && data.topStats) {
-      if (elAccSize) elAccSize.textContent = formatMoney(data.topStats.accountSizeUSD);
-      if (elTodayProf) elTodayProf.textContent = formatMoney(data.topStats.todayProfitUSD);
-      if (elRadarScore) elRadarScore.textContent = data.topStats.score;
-      if (elBalVal) elBalVal.textContent = formatMoney(data.topStats.balanceUSD);
-      if (elBalMax) elBalMax.textContent = `${formatMoney(data.topStats.balanceMaxUSD)} Max`;
-      if (elEqVal) elEqVal.textContent = formatMoney(data.topStats.equityUSD);
-      if (elEqMax) elEqMax.textContent = `${formatMoney(data.topStats.equityMaxUSD)} Max`;
-    } else if (data.topStats) {
-      if (elAccSize) elAccSize.textContent = data.topStats.accountSize || '$5,000.00';
-      if (elTodayProf) elTodayProf.textContent = data.topStats.todayProfit || '$0.00';
+    if (data.topStats) {
+      const accSizeNum = data.topStats.accountSizeUSD !== undefined ? data.topStats.accountSizeUSD : (data.topStats.accountSize || 5000);
+      const todayProfNum = data.topStats.todayProfitUSD !== undefined ? data.topStats.todayProfitUSD : (data.topStats.todayProfit || 0);
+      const balNum = data.topStats.balanceUSD !== undefined ? data.topStats.balanceUSD : (data.topStats.balance || (effCurr === 'INR' ? 463166 : 4631.66));
+      const balMaxNum = data.topStats.balanceMaxUSD !== undefined ? data.topStats.balanceMaxUSD : (data.topStats.balanceMax || (effCurr === 'INR' ? 506558 : 5065.58));
+      const eqNum = data.topStats.equityUSD !== undefined ? data.topStats.equityUSD : (data.topStats.equity || (effCurr === 'INR' ? 463166 : 4631.66));
+      const eqMaxNum = data.topStats.equityMaxUSD !== undefined ? data.topStats.equityMaxUSD : (data.topStats.equityMax || (effCurr === 'INR' ? 512410 : 5124.10));
+
+      if (elAccSize) elAccSize.textContent = formatBrokerCurrency(accSizeNum, effCurr);
+      if (elTodayProf) elTodayProf.textContent = formatBrokerCurrency(todayProfNum, effCurr);
       if (elRadarScore) elRadarScore.textContent = data.topStats.score || '2.84';
-      if (elBalVal) elBalVal.textContent = data.topStats.balance || '$4,631.66';
-      if (elBalMax) elBalMax.textContent = data.topStats.balanceMax || '$5,065.58 Max';
-      if (elEqVal) elEqVal.textContent = data.topStats.equity || '$4,631.66';
-      if (elEqMax) elEqMax.textContent = data.topStats.equityMax || '$5,124.10 Max';
+      if (elBalVal) elBalVal.textContent = formatBrokerCurrency(balNum, effCurr);
+      if (elBalMax) elBalMax.textContent = `${formatBrokerCurrency(balMaxNum, effCurr)} Max`;
+      if (elEqVal) elEqVal.textContent = formatBrokerCurrency(eqNum, effCurr);
+      if (elEqMax) elEqMax.textContent = `${formatBrokerCurrency(eqMaxNum, effCurr)} Max`;
     }
 
     // Render Canvas Charts
@@ -2020,14 +2052,30 @@
   window.setPortfolioCurrency = setPortfolioCurrency;
 
   /* ── Switch Broker Mode (Combined vs Indian vs Forex) ── */
-  function switchPortfolioBroker(type, name) {
+  function switchPortfolioBroker(type, name, currency) {
+    let brokerName = name || 'Angel One';
     if (type === 'combined' || type === 'all') {
       _activeMarket = 'combined';
-    } else if (type === 'forex') {
+      _selectedCurrency = currency || _selectedCurrency || 'INR';
+    } else if (type === 'forex' || (brokerName && (brokerName.toLowerCase().includes('mt5') || brokerName.toLowerCase().includes('metatrader') || brokerName.toLowerCase().includes('vantage') || brokerName.toLowerCase().includes('ic markets')))) {
       _activeMarket = 'forex';
+      _selectedCurrency = currency || 'USD';
     } else {
+      // Indian Brokers: Angel One, Zerodha, Dhan, Groww, Upstox, FYERS, Kotak Neo, Shoonya, etc.
       _activeMarket = 'india';
+      _selectedCurrency = currency || 'INR';
     }
+    _currentBrokerName = brokerName;
+
+    const curr = CURRENCIES[_selectedCurrency] || CURRENCIES.INR;
+    const flagEl = document.getElementById('portfolioCurrFlag');
+    const labelEl = document.getElementById('portfolioCurrLabel');
+    if (flagEl) flagEl.textContent = curr.flag;
+    if (labelEl) labelEl.textContent = curr.label;
+
+    document.querySelectorAll('.portfolio-curr-item').forEach(item => {
+      item.classList.toggle('active', item.getAttribute('data-curr') === _selectedCurrency);
+    });
 
     const pbDropdown = document.getElementById('portfolioBrokerDropdown');
     if (pbDropdown) pbDropdown.classList.remove('dropdown-open');
@@ -2037,12 +2085,12 @@
 
     const btnSpan = document.querySelector('#portfolioBrokerDropdownBtn span:not(.p-dot)');
     if (btnSpan) {
-      btnSpan.textContent = name ? `Connected: ${name}` : 'Connected Brokers';
+      btnSpan.textContent = `Connected: ${brokerName}`;
     }
 
     const cmpBtnSpan = document.getElementById('compareBrokerDropdownLabel');
     if (cmpBtnSpan) {
-      cmpBtnSpan.textContent = name ? `Connected: ${name}` : 'Connected Brokers (5)';
+      cmpBtnSpan.textContent = `Connected: ${brokerName}`;
     }
 
     // Navigate to portfolio view if not already visible
@@ -2084,6 +2132,32 @@
 
   /* ── Initialization ── */
   function initPortfolioPage() {
+    let defaultBrokerName = 'Angel One';
+    let defaultMarket = 'india';
+    let defaultCurrency = 'INR';
+
+    try {
+      const savedBrokers = localStorage.getItem('riskloop_connected_brokers');
+      if (savedBrokers) {
+        const list = JSON.parse(savedBrokers);
+        if (Array.isArray(list) && list.length > 0) {
+          defaultBrokerName = list[0].name || list[0].brokerName || 'Angel One';
+          defaultMarket = (list[0].category === 'forex' || (list[0].segment && list[0].segment.toLowerCase().includes('forex'))) ? 'forex' : 'india';
+          defaultCurrency = list[0].currency || (defaultMarket === 'india' ? 'INR' : 'USD');
+        }
+      } else {
+        const single = localStorage.getItem('riskloop_connected_broker');
+        if (single) {
+          const b = JSON.parse(single);
+          if (b && b.connected) {
+            defaultBrokerName = b.brokerName || b.name || 'Angel One';
+            defaultMarket = (b.category === 'forex') ? 'forex' : 'india';
+            defaultCurrency = b.currency || (defaultMarket === 'india' ? 'INR' : 'USD');
+          }
+        }
+      }
+    } catch (e) {}
+
     // Timeframe filters
     const tfBtns = document.querySelectorAll('.portfolio-tf-btn');
     tfBtns.forEach(btn => {
@@ -2121,6 +2195,7 @@
       renderSemiGauge('shortGaugeCanvas', data.longShort.short.winRate);
     });
 
+    switchPortfolioBroker(defaultMarket, defaultBrokerName, defaultCurrency);
     updateBrokerCompareDropdownUI();
     updatePortfolioUI();
   }

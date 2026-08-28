@@ -483,12 +483,6 @@
           <td class="cal-col-event">
             <div class="cal-event-cell">
               <span class="cal-event-title">${evt.event || evt.eventName || '—'}</span>
-              <div style="display:flex;align-items:center;gap:6px;margin-top:3px;flex-wrap:wrap;">
-                <a href="${sourceUrl}" target="_blank" rel="noopener noreferrer" class="cal-source-pill" title="Click to verify release on official ${sourceName} portal">
-                  🏛️ ${evt.source || sourceName} ↗
-                </a>
-                ${evt.unit && evt.unit !== '%' ? `<span style="font-size:9.5px;color:var(--text-muted);font-family:monospace;">${evt.unit}</span>` : ''}
-              </div>
             </div>
           </td>
           <td class="cal-col-country">

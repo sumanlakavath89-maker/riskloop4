@@ -282,10 +282,9 @@
                 <th style="padding: 12px 16px;">Country</th>
                 <th style="padding: 12px 16px;">Event Name</th>
                 <th style="padding: 12px 16px;">Impact</th>
-                <th style="padding: 12px 16px; text-align: right;">Actual</th>
-                <th style="padding: 12px 16px; text-align: right;">Forecast</th>
                 <th style="padding: 12px 16px; text-align: right;">Previous</th>
-                <th style="padding: 12px 16px;">Source</th>
+                <th style="padding: 12px 16px; text-align: right;">Forecast</th>
+                <th style="padding: 12px 16px; text-align: right;">Actual</th>
               </tr>
             </thead>
             <tbody>
@@ -322,17 +321,14 @@
               ${impactMeta.label}
             </span>
           </td>
-          <td style="padding: 12px 16px; text-align: right; font-weight: 700; color: ${formatCalendarValue(ev.actual) !== '—' ? '#10b981' : '#94a3b8'};">
-            ${formatCalendarValue(ev.actual, ev.unit)}
+          <td style="padding: 12px 16px; text-align: right; color: #94a3b8;">
+            ${formatCalendarValue(ev.previous, ev.unit)}
           </td>
           <td style="padding: 12px 16px; text-align: right; color: #e2e8f0;">
             ${formatCalendarValue(ev.forecast, ev.unit)}
           </td>
-          <td style="padding: 12px 16px; text-align: right; color: #94a3b8;">
-            ${formatCalendarValue(ev.previous, ev.unit)}
-          </td>
-          <td style="padding: 12px 16px; font-size: 0.75rem; color: #94a3b8;">
-            ${ev.source}
+          <td style="padding: 12px 16px; text-align: right; font-weight: 700; color: ${formatCalendarValue(ev.actual) !== '—' ? '#10b981' : '#94a3b8'};">
+            ${formatCalendarValue(ev.actual, ev.unit)}
           </td>
         </tr>
       `;

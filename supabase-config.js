@@ -126,6 +126,64 @@
   }
 
   /**
+   * Fetch authenticated user's profile from database / Supabase profiles table
+   */
+  async function fetchUserProfileFromDatabase(user) {
+    if (!user || !user.id) return user;
+    let profile = { ...user };
+
+    // 1. Direct query to Supabase 'profiles' table using the authenticated user ID
+    if (supabaseClient) {
+      try {
+        const { data, error } = await supabaseClient
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        if (data && !error) {
+          if (data.full_name) profile.fullName = data.full_name;
+          if (data.avatar_url) {
+            profile.avatarUrl = data.avatar_url;
+            profile.avatar_url = data.avatar_url;
+          }
+          if (data.email) profile.email = data.email;
+          if (data.avatar_public_id) profile.avatarPublicId = data.avatar_public_id;
+        }
+      } catch (e) {
+        console.warn('[RiskLoopAuth] Error fetching profile from Supabase profiles table:', e);
+      }
+    }
+
+    // 2. Fetch from backend /api/profile if needed
+    try {
+      const authHeaders = {};
+      if (supabaseClient) {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (session?.access_token) {
+          authHeaders['Authorization'] = `Bearer ${session.access_token}`;
+        }
+      }
+      const resp = await fetch('/api/profile', { headers: authHeaders });
+      if (resp.ok) {
+        const resJson = await resp.json();
+        if (resJson.success && resJson.data) {
+          if (resJson.data.fullName) profile.fullName = resJson.data.fullName;
+          if (resJson.data.avatarUrl) {
+            profile.avatarUrl = resJson.data.avatarUrl;
+            profile.avatar_url = resJson.data.avatarUrl;
+          }
+          if (resJson.data.email) profile.email = resJson.data.email;
+        }
+      }
+    } catch (_) { }
+
+    currentUserCache = profile;
+    setLocalMockUser(profile);
+    return profile;
+  }
+
+  /**
    * Resolve dynamic authentication redirect URL
    * Detects the exact origin of the client (mobile device, desktop, production domain, preview, or local dev)
    * Ensures mobile users never receive localhost URLs when registering on production.
@@ -139,34 +197,33 @@
       if (explicitUrl && typeof explicitUrl === 'string' && explicitUrl.startsWith('http')) {
         return `${explicitUrl.replace(/\/+$/, '')}${cleanSubpath}`;
       }
+    }
 
-      // 2. Dynamic browser origin (Handles mobile browser, desktop, production, staging, localhost)
-      if (window.location && window.location.origin && window.location.origin.startsWith('http')) {
-        return `${window.location.origin}${cleanSubpath}`;
+    // 2. Dynamic browser origin detection
+    if (typeof window !== 'undefined' && window.location && window.location.origin) {
+      const origin = window.location.origin;
+      if (origin && origin !== 'null' && !origin.startsWith('file:')) {
+        return `${origin}${cleanSubpath}`;
       }
     }
 
-    // 3. Fallback outside browser
-    if (typeof process !== 'undefined' && process.env) {
-      const serverEnvUrl = process.env.FRONTEND_URL || process.env.APP_URL || process.env.SITE_URL;
-      if (serverEnvUrl && serverEnvUrl.startsWith('http')) {
-        return `${serverEnvUrl.replace(/\/+$/, '')}${cleanSubpath}`;
-      }
-    }
-
-    return `http://localhost:3000${cleanSubpath}`;
+    // 3. Fallback to production default
+    return `https://riskloop.io${cleanSubpath}`;
   }
 
   function cleanAuthUrl() {
     try {
-      const hash = window.location.hash || '';
-      const search = window.location.search || '';
-      const pathname = window.location.pathname || '';
-
-      // Never strip recovery flow parameters before password reset is completed
-      if (hash.includes('type=recovery') || search.includes('type=recovery') || pathname.includes('/reset-password') || hash.includes('reset-password')) {
-        return;
+      const url = new URL(window.location.href);
+      if (url.searchParams.has('code')) {
+        url.searchParams.delete('code');
       }
+      if (url.searchParams.has('state')) {
+        url.searchParams.delete('state');
+      }
+      if (url.hash.includes('access_token') || url.hash.includes('type=')) {
+        url.hash = '';
+      }
+      window.history.replaceState({}, document.title, url.toString());
 
       if (window.history && window.history.replaceState) {
         window.history.replaceState(null, '', window.location.pathname + '#dashboard');
@@ -174,6 +231,44 @@
         window.location.hash = 'dashboard';
       }
     } catch (_) { }
+  }
+
+  let isAuthLoading = true;
+  const authReadyResolvers = [];
+
+  function emitAuthReady(user, session, event = 'INITIAL_SESSION') {
+    isAuthLoading = false;
+    currentUserCache = user;
+    setLocalMockUser(user);
+
+    // Notify auth listeners
+    notifyAuthListeners(event, user ? { user, session } : null);
+
+    // Resolve any awaiting promises
+    while (authReadyResolvers.length > 0) {
+      const resolve = authReadyResolvers.shift();
+      try { resolve(user); } catch (_) { }
+    }
+
+    // Dispatch global events
+    window.dispatchEvent(new CustomEvent('riskloop_auth_ready', {
+      detail: { user, session, isAuthenticated: !!(user && user.id) }
+    }));
+    window.dispatchEvent(new CustomEvent('riskloop_auth_state_changed', {
+      detail: { user, session, isAuthenticated: !!(user && user.id) }
+    }));
+
+    // Update body classes
+    if (typeof document !== 'undefined' && document.body) {
+      document.body.classList.remove('auth-loading');
+      if (user && user.id) {
+        document.body.classList.add('authenticated');
+        document.body.classList.remove('unauthenticated');
+      } else {
+        document.body.classList.remove('authenticated');
+        document.body.classList.add('unauthenticated');
+      }
+    }
   }
 
   function setupSupabaseAuthListener(client) {
@@ -222,17 +317,16 @@
     }
 
     try {
-      const { data: { subscription } } = client.auth.onAuthStateChange((event, session) => {
+      const { data: { subscription } } = client.auth.onAuthStateChange(async (event, session) => {
         console.log(`[RiskLoopAuth] Real-time Supabase auth event: ${event}`, session?.user?.email);
 
         if (event === 'PASSWORD_RECOVERY' || isRecoveryCallback) {
           window.__riskloop_is_password_recovery = true;
-          const user = session?.user ? normalizeSupabaseUser(session.user) : null;
+          let user = session?.user ? normalizeSupabaseUser(session.user) : null;
           if (user) {
-            currentUserCache = user;
-            setLocalMockUser(user);
+            user = await fetchUserProfileFromDatabase(user);
           }
-          notifyAuthListeners('PASSWORD_RECOVERY', { user, session });
+          emitAuthReady(user, session, 'PASSWORD_RECOVERY');
           window.dispatchEvent(new CustomEvent('riskloop_password_recovery', { detail: { user, session } }));
           setTimeout(() => {
             if (typeof window.openResetPasswordModal === 'function') {
@@ -242,26 +336,23 @@
           return;
         }
 
+        if (event === 'SIGNED_OUT') {
+          emitAuthReady(null, null, 'SIGNED_OUT');
+          return;
+        }
+
         if (session && session.user) {
-          const user = normalizeSupabaseUser(session.user);
-          currentUserCache = user;
-          setLocalMockUser(user);
+          let user = normalizeSupabaseUser(session.user);
+          user = await fetchUserProfileFromDatabase(user);
 
           const isVerification = isUrlAuthCallback || event === 'SIGNED_IN' || event === 'USER_UPDATED';
           if (isUrlAuthCallback && !isRecoveryCallback) {
             cleanAuthUrl();
           }
 
-          notifyAuthListeners(event, { user, session, isEmailVerification: isVerification });
-        } else if (event === 'SIGNED_OUT') {
-          currentUserCache = null;
-          setLocalMockUser(null);
-          notifyAuthListeners('SIGNED_OUT', null);
+          emitAuthReady(user, session, event);
         } else {
-          const user = session?.user ? normalizeSupabaseUser(session.user) : null;
-          currentUserCache = user;
-          setLocalMockUser(user);
-          notifyAuthListeners(event, user ? { user, session } : null);
+          emitAuthReady(null, null, event);
         }
       });
 
@@ -275,11 +366,10 @@
       const urlParams = new URLSearchParams(search);
       const code = urlParams.get('code');
       if (code) {
-        client.auth.exchangeCodeForSession(code).then(({ data, error }) => {
+        client.auth.exchangeCodeForSession(code).then(async ({ data, error }) => {
           if (!error && data?.session?.user) {
-            const user = normalizeSupabaseUser(data.session.user);
-            currentUserCache = user;
-            setLocalMockUser(user);
+            let user = normalizeSupabaseUser(data.session.user);
+            user = await fetchUserProfileFromDatabase(user);
             if (isRecoveryCallback) {
               window.__riskloop_is_password_recovery = true;
               if (typeof window.openResetPasswordModal === 'function') {
@@ -290,7 +380,7 @@
               if (typeof window.recordSuccessfulLogin === 'function') {
                 window.recordSuccessfulLogin(user, data.session, 'Google OAuth');
               }
-              notifyAuthListeners('SIGNED_IN', { user, session: data.session, isEmailVerification: true });
+              emitAuthReady(user, data.session, 'SIGNED_IN');
             }
           } else if (error && isRecoveryCallback) {
             if (typeof window.openResetPasswordModal === 'function') {
@@ -303,12 +393,11 @@
       }
     }
 
-    // Check initial session immediately
-    client.auth.getSession().then(({ data: { session } }) => {
-      if (session && session.user) {
-        const user = normalizeSupabaseUser(session.user);
-        currentUserCache = user;
-        setLocalMockUser(user);
+    // Initial session check on page load: restore existing persisted session
+    client.auth.getSession().then(async ({ data: { session }, error }) => {
+      if (!error && session && session.user) {
+        let user = normalizeSupabaseUser(session.user);
+        user = await fetchUserProfileFromDatabase(user);
         if (isRecoveryCallback) {
           window.__riskloop_is_password_recovery = true;
           setTimeout(() => {
@@ -319,17 +408,20 @@
         } else if (isUrlAuthCallback) {
           cleanAuthUrl();
         }
-        notifyAuthListeners('INITIAL_SESSION', { user, session, isEmailVerification: isUrlAuthCallback });
-      } else if (isRecoveryCallback) {
-        // Recovery URL visited without valid session
-        setTimeout(() => {
-          if (typeof window.openResetPasswordModal === 'function') {
-            window.openResetPasswordModal(true, 'This reset link has expired or is invalid. Please request a new link.');
-          }
-        }, 50);
+        emitAuthReady(user, session, 'INITIAL_SESSION');
+      } else {
+        emitAuthReady(null, null, 'INITIAL_SESSION');
+        if (isRecoveryCallback) {
+          setTimeout(() => {
+            if (typeof window.openResetPasswordModal === 'function') {
+              window.openResetPasswordModal(true, 'This reset link has expired or is invalid. Please request a new link.');
+            }
+          }, 50);
+        }
       }
     }).catch(err => {
       console.warn('[RiskLoopAuth] getSession check error:', err);
+      emitAuthReady(null, null, 'INITIAL_SESSION');
     });
   }
 
@@ -339,9 +431,16 @@
     }
     if (typeof window.supabase !== 'undefined' && typeof window.supabase.createClient === 'function') {
       try {
-        supabaseClient = window.supabase.createClient(url, key);
+        supabaseClient = window.supabase.createClient(url, key, {
+          auth: {
+            persistSession: true,
+            autoRefreshToken: true,
+            detectSessionInUrl: true,
+            storage: typeof window !== 'undefined' ? window.localStorage : undefined
+          }
+        });
         window.supabaseClient = supabaseClient;
-        console.log('✅ RiskLoop: Supabase client initialized with live credentials.');
+        console.log('✅ RiskLoop: Supabase client initialized with session persistence.');
         setupSupabaseAuthListener(supabaseClient);
         return true;
       } catch (e) {
@@ -795,6 +894,30 @@
     },
 
     /**
+     * Check if authentication is currently loading / restoring session
+     */
+    isAuthLoading: function () {
+      return isAuthLoading;
+    },
+
+    /**
+     * Returns a promise that resolves once initial auth session check is complete
+     */
+    whenReady: function () {
+      if (!isAuthLoading) {
+        return Promise.resolve(currentUserCache || getLocalMockUser());
+      }
+      return new Promise(resolve => {
+        authReadyResolvers.push(resolve);
+      });
+    },
+
+    /**
+     * Fetch user profile from database
+     */
+    fetchUserProfile: fetchUserProfileFromDatabase,
+
+    /**
      * Listen to authentication state changes
      */
     onAuthStateChange: function (callback) {
@@ -805,25 +928,18 @@
         authListeners.push(callback);
       }
 
-      // Immediate delivery of current cached state
-      const current = currentUserCache || getLocalMockUser();
-      if (current) {
+      // If initial auth check is complete, deliver current verified state immediately
+      if (!isAuthLoading) {
+        const current = currentUserCache || getLocalMockUser();
         setTimeout(() => {
           try {
-            callback('INITIAL_SESSION', { user: current });
-          } catch (e) {
-            console.error(e);
-          }
-        }, 0);
-      } else {
-        setTimeout(() => {
-          try {
-            callback('INITIAL_SESSION', null);
+            callback('INITIAL_SESSION', current ? { user: current } : null);
           } catch (e) {
             console.error(e);
           }
         }, 0);
       }
+      // If still loading, callback is in authListeners array and will be invoked by emitAuthReady once getSession completes
 
       // Return unsubscribe function
       return function unsubscribe() {

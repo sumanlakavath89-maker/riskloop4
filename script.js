@@ -975,12 +975,15 @@ function showPage(pageName) {
   
   // Check if user is authenticated (logged in)
   const isAuthenticated = checkAuthStatus();
+  const isAuthLoading = window.RiskLoopAuth && typeof window.RiskLoopAuth.isAuthLoading === 'function' ? window.RiskLoopAuth.isAuthLoading() : false;
   
-  // Set authenticated class on body
+  // Set authenticated/unauthenticated class on body
   if (isAuthenticated) {
+    document.body.classList.remove('auth-loading', 'unauthenticated');
     document.body.classList.add('authenticated');
-  } else {
-    document.body.classList.remove('authenticated');
+  } else if (!isAuthLoading) {
+    document.body.classList.remove('auth-loading', 'authenticated');
+    document.body.classList.add('unauthenticated');
   }
 
   // Check if current view is landing page (home, login, register, about, pricing, reset-password)
@@ -991,30 +994,20 @@ function showPage(pageName) {
   const notifWrapper = document.getElementById('headerNotificationsAuth');
   const authThemeToggle = document.getElementById('themeToggleAuth');
 
-  // Landing page mode active when on home/login/register OR when user is unauthenticated
-  if (isLandingPage) {
+  if (isAuthenticated) {
+    if (root) root.classList.remove('landing-page-mode');
+    document.body.classList.remove('landing-mode');
+    if (guestRow) guestRow.hidden = true;
+    if (userDropdown) userDropdown.hidden = false;
+    if (notifWrapper) notifWrapper.hidden = false;
+    if (authThemeToggle) authThemeToggle.hidden = false;
+  } else if (!isAuthLoading) {
     if (root) root.classList.add('landing-page-mode');
     document.body.classList.add('landing-mode');
     if (guestRow) guestRow.hidden = false;
     if (userDropdown) userDropdown.hidden = true;
     if (notifWrapper) notifWrapper.hidden = true;
     if (authThemeToggle) authThemeToggle.hidden = true;
-  } else {
-    if (isAuthenticated) {
-      if (root) root.classList.remove('landing-page-mode');
-      document.body.classList.remove('landing-mode');
-      if (guestRow) guestRow.hidden = true;
-      if (userDropdown) userDropdown.hidden = false;
-      if (notifWrapper) notifWrapper.hidden = false;
-      if (authThemeToggle) authThemeToggle.hidden = false;
-    } else {
-      if (root) root.classList.add('landing-page-mode');
-      document.body.classList.add('landing-mode');
-      if (guestRow) guestRow.hidden = false;
-      if (userDropdown) userDropdown.hidden = true;
-      if (notifWrapper) notifWrapper.hidden = true;
-      if (authThemeToggle) authThemeToggle.hidden = true;
-    }
   }
 
   // Hide all pages
@@ -10039,10 +10032,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const dashGreeting = document.getElementById('dashUserGreetingName');
     const dashAvatar = document.getElementById('dashUserAvatar');
 
-    const currentPage = getCurrentPage();
-    const isLanding = (currentPage === 'home' || currentPage === 'login' || currentPage === 'register');
+    const isAuthLoading = window.RiskLoopAuth && typeof window.RiskLoopAuth.isAuthLoading === 'function' ? window.RiskLoopAuth.isAuthLoading() : false;
 
     if (user && user.email) {
+      document.body.classList.remove('auth-loading', 'unauthenticated');
       document.body.classList.add('authenticated');
       const displayName = user.fullName || user.email.split('@')[0];
       const initial = (displayName ? displayName.charAt(0) : 'T').toUpperCase();
@@ -10088,17 +10081,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       }
 
-      if (isLanding) {
-        if (guestRow) guestRow.hidden = false;
-        if (userDropdown) userDropdown.hidden = true;
-        if (notifWrapper) notifWrapper.hidden = true;
-        if (authThemeToggle) authThemeToggle.hidden = true;
-      } else {
-        if (guestRow) guestRow.hidden = true;
-        if (userDropdown) userDropdown.hidden = false;
-        if (notifWrapper) notifWrapper.hidden = false;
-        if (authThemeToggle) authThemeToggle.hidden = false;
-      }
+      if (guestRow) guestRow.hidden = true;
+      if (userDropdown) userDropdown.hidden = false;
+      if (notifWrapper) notifWrapper.hidden = false;
+      if (authThemeToggle) authThemeToggle.hidden = false;
 
       if (window.RiskLoopNotifications) {
         if (typeof window.RiskLoopNotifications.setUser === 'function') {
@@ -10108,8 +10094,9 @@ document.addEventListener('DOMContentLoaded', function() {
           window.RiskLoopNotifications.fetch();
         }
       }
-    } else {
-      document.body.classList.remove('authenticated');
+    } else if (!isAuthLoading) {
+      document.body.classList.remove('auth-loading', 'authenticated');
+      document.body.classList.add('unauthenticated');
       if (userName) userName.textContent = '';
       if (userAvatar) userAvatar.textContent = '';
       if (menuName) menuName.textContent = '';

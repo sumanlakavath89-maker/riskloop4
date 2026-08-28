@@ -999,6 +999,18 @@
   window.toggleProfileEditMode = toggleEditMode;
   window.handleProfileAvatarFile = handleFileSelected;
 
+  window.addEventListener('riskloop_auth_ready', (e) => {
+    if (e.detail?.isAuthenticated) {
+      loadUserProfile();
+    }
+  });
+
+  window.addEventListener('riskloop_auth_state_changed', (e) => {
+    if (e.detail?.isAuthenticated) {
+      loadUserProfile();
+    }
+  });
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
       loadUserProfile();

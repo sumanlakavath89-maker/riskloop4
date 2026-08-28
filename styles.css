@@ -12,6 +12,36 @@
   display: none !important;
 }
 
+/* Authentication Loading & State Visibility (Prevents flickering on reload) */
+body.auth-loading #headerGuestAuth,
+body.auth-loading #headerUserAuth,
+body.auth-loading #headerNotificationsAuth,
+body.auth-loading #themeToggleAuth {
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+body.authenticated #headerGuestAuth {
+  display: none !important;
+}
+
+body.authenticated #headerUserAuth,
+body.authenticated #headerNotificationsAuth,
+body.authenticated #themeToggleAuth {
+  display: inline-flex !important;
+}
+
+body.unauthenticated #headerUserAuth,
+body.unauthenticated #headerNotificationsAuth,
+body.unauthenticated #themeToggleAuth {
+  display: none !important;
+}
+
+body.unauthenticated #headerGuestAuth {
+  display: flex !important;
+}
+
 :root {
   /* Dark Theme (Default) */
   --bg: #1B2036;

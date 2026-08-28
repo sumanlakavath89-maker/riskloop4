@@ -18,8 +18,8 @@ if (!htmlCode.includes('Supported Brokers & Exchanges')) {
 if (!htmlCode.includes('id="brokersTopConnectBtn"')) {
   throw new Error('FAIL: brokersTopConnectBtn not found in index.html');
 }
-if (!htmlCode.includes('Featured (Top 6)')) {
-  throw new Error('FAIL: Featured tab not found in index.html');
+if (!htmlCode.includes('data-cat="all"')) {
+  throw new Error('FAIL: View All tab not found in index.html');
 }
 
 // 2. Mock environment to test modal behavior
@@ -69,7 +69,6 @@ function getOrCreateEl(id) {
   return domElements[id];
 }
 
-const createdCards = [];
 global.window = {
   addEventListener: () => {},
   removeEventListener: () => {},
@@ -81,7 +80,6 @@ global.document = {
   querySelectorAll: (selector) => {
     if (selector === '.broker-catalog-card') {
       const grid = getOrCreateEl('allBrokersGrid');
-      // Simple parser of rendered elements in grid for test
       const matches = [];
       const parts = grid.innerHTML.split('<div class="broker-catalog-card');
       parts.slice(1).forEach((part, idx) => {
@@ -103,6 +101,14 @@ global.document = {
         matches.push(cardObj);
       });
       return matches;
+    }
+    if (selector === '.broker-modal-tab') {
+      return [
+        { getAttribute: () => 'all', style: {} },
+        { getAttribute: () => 'indian', style: {} },
+        { getAttribute: () => 'forex', style: {} },
+        { getAttribute: () => 'crypto', style: {} }
+      ];
     }
     return [];
   },
@@ -151,7 +157,11 @@ if (!gridEl.innerHTML.includes('View All 18+ Brokers')) {
 }
 console.log('PASS: Featured 3 Indian + 3 Forex layout with View All expander verified!');
 
-// 4. Test connecting a real broker
+// 4. Test View All tab click
+window.setBrokerModalCat('all');
+console.log('PASS: setBrokerModalCat("all") executed successfully');
+
+// 5. Test connecting a real broker
 localStorage.setItem('riskloop_connected_brokers', JSON.stringify([
   { id: 'angelone', name: 'Angel One', brokerName: 'Angel One', connected: true }
 ]));
@@ -165,7 +175,7 @@ if (!gridEl.innerHTML.includes('Connected')) {
 }
 console.log('PASS: Real connected broker dynamically detected and marked as Connected');
 
-// 5. Test closing the modal
+// 6. Test closing the modal
 window.closeAllBrokersModal();
 if (modalEl.style.display !== 'none') {
   throw new Error('FAIL: Modal display should be none after closeAllBrokersModal()');

@@ -1781,17 +1781,11 @@
       document.body.style.overflow = 'hidden';
       _activeBrokerModalCat = 'featured';
       
-      // Reset tab active styling
+      // Reset tab active styling so none is forced-active in initial featured 6-broker view
       document.querySelectorAll('.broker-modal-tab').forEach(b => {
-        if (b.dataset.cat === 'featured') {
-          b.style.background = 'var(--accent)';
-          b.style.color = '#101322';
-          b.style.border = 'none';
-        } else {
-          b.style.background = 'rgba(255,255,255,0.05)';
-          b.style.color = 'var(--text)';
-          b.style.border = '1px solid rgba(255,255,255,0.1)';
-        }
+        b.style.background = 'rgba(255,255,255,0.05)';
+        b.style.color = 'var(--text)';
+        b.style.border = '1px solid rgba(255,255,255,0.1)';
       });
 
       renderAllBrokersGrid();
@@ -1817,7 +1811,7 @@
     _activeBrokerModalCat = cat || 'all';
     
     document.querySelectorAll('.broker-modal-tab').forEach(b => {
-      if (b === btnEl || (cat && b.dataset.cat === cat)) {
+      if (b === btnEl || (cat && b.getAttribute('data-cat') === cat)) {
         b.style.background = 'var(--accent)';
         b.style.color = '#101322';
         b.style.border = 'none';

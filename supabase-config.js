@@ -135,23 +135,27 @@
     // 1. Direct query to Supabase 'profiles' table using the authenticated user ID
     if (supabaseClient) {
       try {
+        console.log(`[RiskLoopAuth] Fetching user profile from Supabase profiles table for ID: ${user.id}`);
         const { data, error } = await supabaseClient
           .from('profiles')
           .select('*')
           .eq('id', user.id)
           .maybeSingle();
 
-        if (data && !error) {
+        if (error) {
+          console.error('[RiskLoopAuth Error] Supabase profiles select error:', error);
+        } else if (data) {
+          console.log('[RiskLoopAuth Success] Supabase profile record retrieved:', data);
           if (data.full_name) profile.fullName = data.full_name;
-          if (data.avatar_url) {
-            profile.avatarUrl = data.avatar_url;
-            profile.avatar_url = data.avatar_url;
+          if (data.avatar_url && typeof data.avatar_url === 'string' && data.avatar_url.trim()) {
+            profile.avatarUrl = data.avatar_url.trim();
+            profile.avatar_url = data.avatar_url.trim();
           }
           if (data.email) profile.email = data.email;
           if (data.avatar_public_id) profile.avatarPublicId = data.avatar_public_id;
         }
       } catch (e) {
-        console.warn('[RiskLoopAuth] Error fetching profile from Supabase profiles table:', e);
+        console.error('[RiskLoopAuth Error] Exception fetching profile from Supabase profiles table:', e);
       }
     }
 
@@ -162,18 +166,23 @@
         const { data: { session } } = await supabaseClient.auth.getSession();
         if (session?.access_token) {
           authHeaders['Authorization'] = `Bearer ${session.access_token}`;
+          authHeaders['x-supabase-token'] = session.access_token;
         }
       }
+      authHeaders['x-user-id'] = user.id;
+      if (user.email) authHeaders['x-user-email'] = user.email;
+
       const resp = await fetch('/api/profile', { headers: authHeaders });
       if (resp.ok) {
         const resJson = await resp.json();
         if (resJson.success && resJson.data) {
           if (resJson.data.fullName) profile.fullName = resJson.data.fullName;
-          if (resJson.data.avatarUrl) {
-            profile.avatarUrl = resJson.data.avatarUrl;
-            profile.avatar_url = resJson.data.avatarUrl;
+          if (resJson.data.avatarUrl && typeof resJson.data.avatarUrl === 'string' && resJson.data.avatarUrl.trim()) {
+            profile.avatarUrl = resJson.data.avatarUrl.trim();
+            profile.avatar_url = resJson.data.avatarUrl.trim();
           }
           if (resJson.data.email) profile.email = resJson.data.email;
+          if (resJson.data.avatarPublicId) profile.avatarPublicId = resJson.data.avatarPublicId;
         }
       }
     } catch (_) { }

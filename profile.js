@@ -120,10 +120,18 @@
     profileState.loading = true;
     
     try {
+      // 0. Wait for Supabase authentication initialization
+      if (window.RiskLoopAuth && typeof window.RiskLoopAuth.whenReady === 'function') {
+        await window.RiskLoopAuth.whenReady();
+      }
+
       // 1. Get current user identity
       let currentUser = null;
       if (window.RiskLoopAuth && typeof window.RiskLoopAuth.getUser === 'function') {
         currentUser = window.RiskLoopAuth.getUser();
+      }
+      if (!currentUser && window.RiskLoopAuth && typeof window.RiskLoopAuth.getCurrentUser === 'function') {
+        currentUser = await window.RiskLoopAuth.getCurrentUser();
       }
 
       if (!currentUser) {
@@ -137,7 +145,41 @@
 
       const userId = currentUser?.id || localStorage.getItem('riskloop_user_id') || 'trader_session';
 
-      // 2. Fetch from Backend Database GET /api/profile (Persistent Source of Truth)
+      // 2. Check Supabase profiles table directly if live client exists
+      let sbProfile = null;
+      if (window.supabaseClient && currentUser && currentUser.id) {
+        try {
+          console.log('[Profile Fetch] Querying Supabase profiles table for user ID:', currentUser.id);
+          const { data: profileRow, error: pErr } = await window.supabaseClient
+            .from('profiles')
+            .select('*')
+            .eq('id', currentUser.id)
+            .maybeSingle();
+
+          if (pErr) {
+            console.error('[Profile Fetch Error] Supabase profiles select error:', pErr);
+          } else if (profileRow) {
+            console.log('[Profile Fetch Success] Retrieved profile record from Supabase:', profileRow);
+            sbProfile = profileRow;
+          }
+
+          const { data: settingsRow } = await window.supabaseClient
+            .from('user_settings')
+            .select('*')
+            .eq('user_id', currentUser.id)
+            .maybeSingle();
+
+          if (settingsRow) {
+            if (settingsRow.phone) profileState.profileData.phone = settingsRow.phone;
+            if (settingsRow.country) profileState.profileData.country = settingsRow.country;
+            if (settingsRow.timezone) profileState.profileData.timezone = settingsRow.timezone;
+          }
+        } catch (sbErr) {
+          console.error('[Profile Fetch Error] Exception querying Supabase:', sbErr);
+        }
+      }
+
+      // 3. Fetch from Backend Database GET /api/profile
       let backendProfile = null;
       try {
         const authHeaders = await getProfileAuthHeaders();
@@ -156,66 +198,36 @@
         console.warn('[Profile] GET /api/profile fetch warning:', apiErr);
       }
 
-      // 3. Check Supabase profiles table if live client exists
-      let sbProfile = null;
-      if (window.supabaseClient && currentUser && currentUser.id) {
-        try {
-          const { data: profileRow, error: pErr } = await window.supabaseClient
-            .from('profiles')
-            .select('*')
-            .eq('id', currentUser.id)
-            .maybeSingle();
-
-          if (profileRow && !pErr) {
-            sbProfile = profileRow;
-          }
-
-          const { data: settingsRow } = await window.supabaseClient
-            .from('user_settings')
-            .select('*')
-            .eq('user_id', currentUser.id)
-            .maybeSingle();
-
-          if (settingsRow) {
-            if (settingsRow.phone) profileState.profileData.phone = settingsRow.phone;
-            if (settingsRow.country) profileState.profileData.country = settingsRow.country;
-            if (settingsRow.timezone) profileState.profileData.timezone = settingsRow.timezone;
-          }
-        } catch (sbErr) {
-          console.warn('[Profile] Supabase profile fetch error:', sbErr);
-        }
-      }
-
-      // 4. Resolve persistent values (Database & Cloudinary take precedence)
+      // 4. Resolve persistent values (Supabase Cloudinary secure_url takes top precedence)
       const resolvedAvatar = (
-        backendProfile?.avatarUrl ||
-        backendProfile?.avatar_url ||
         sbProfile?.avatar_url ||
-        currentUser?.avatarUrl ||
+        backendProfile?.avatar_url ||
+        backendProfile?.avatarUrl ||
         currentUser?.avatar_url ||
+        currentUser?.avatarUrl ||
         ''
       );
 
       const resolvedFullName = (
+        sbProfile?.full_name ||
         backendProfile?.fullName ||
         backendProfile?.full_name ||
-        sbProfile?.full_name ||
         currentUser?.fullName ||
         (currentUser?.email ? currentUser.email.split('@')[0] : '') ||
         'Trader'
       );
 
       const resolvedEmail = (
-        backendProfile?.email ||
         sbProfile?.email ||
+        backendProfile?.email ||
         currentUser?.email ||
         'trader@riskloop.io'
       );
 
       const resolvedPublicId = (
+        sbProfile?.avatar_public_id ||
         backendProfile?.avatarPublicId ||
         backendProfile?.avatar_public_id ||
-        sbProfile?.avatar_public_id ||
         null
       );
 
@@ -607,11 +619,13 @@
       if (avatarUploadState.pendingIsRemove) {
         // DELETE /api/profile/avatar — removes active Cloudinary asset
         try {
+          console.log('[Profile Avatar] Deleting active avatar asset...');
           const delResp = await fetch(getProfileApiUrl('/api/profile/avatar'), {
             method: 'DELETE',
             headers: authHeaders
           });
           const delJson = await delResp.json();
+          console.log('[Profile Avatar Delete Response]', delJson);
           if (!delJson.success) {
             console.warn('[Profile] Avatar delete warning:', delJson.error);
           }
@@ -619,11 +633,13 @@
           console.warn('[Profile] Avatar delete request error:', delErr.message);
         }
         newAvatar = '';
+        newPublicId = null;
       } else if (avatarUploadState.pendingFile) {
         // POST /api/profile/avatar — stream upload to Cloudinary via FormData
         const formData = new FormData();
         formData.append('avatar', avatarUploadState.pendingFile);
 
+        console.log('[Profile Avatar Upload] Initiating Cloudinary upload...');
         const resp = await fetch(getProfileApiUrl('/api/profile/avatar'), {
           method: 'POST',
           headers: authHeaders,
@@ -631,44 +647,60 @@
         });
 
         const resJson = await resp.json();
+        console.log('[Profile Avatar Cloudinary Response]', resJson);
+
         if (!resJson.success) {
           throw new Error(resJson.error || 'Failed to upload photo to Cloudinary.');
         }
 
-        newAvatar = resJson.data?.avatar_url || '';
-        newPublicId = resJson.data?.public_id || null;
+        newAvatar = resJson.data?.avatar_url || resJson.data?.avatarUrl || '';
+        newPublicId = resJson.data?.public_id || resJson.data?.avatarPublicId || null;
       } else {
         newAvatar = avatarUploadState.pendingAvatarUrl || '';
       }
 
       // 1. Update local profile state
       profileState.profileData.avatarUrl = newAvatar;
-      if (newPublicId) {
-        profileState.profileData.avatarPublicId = newPublicId;
-      } else if (avatarUploadState.pendingIsRemove) {
-        profileState.profileData.avatarPublicId = null;
-      }
+      profileState.profileData.avatarPublicId = newPublicId;
 
       if (els.avatarUrlInput) {
         els.avatarUrlInput.value = newAvatar;
       }
 
-      // 2. Update Supabase if client is live
+      // 2. Permanently upsert Cloudinary secure_url into Supabase profiles table
       if (window.supabaseClient && profileState.user && profileState.user.id) {
         try {
           const updatePayload = {
+            id: profileState.user.id,
+            email: profileState.user.email || profileState.profileData.email,
+            full_name: profileState.profileData.fullName || profileState.user.fullName,
             avatar_url: newAvatar || null,
+            avatar_public_id: newPublicId || null,
             updated_at: new Date().toISOString()
           };
-          if (newPublicId !== undefined) {
-            updatePayload.avatar_public_id = newPublicId;
-          }
-          await window.supabaseClient
+          console.log('[Profile Avatar Supabase Upsert Payload]', updatePayload);
+          const { data: sbData, error: sbErr } = await window.supabaseClient
             .from('profiles')
-            .update(updatePayload)
-            .eq('id', profileState.user.id);
+            .upsert(updatePayload)
+            .select();
+
+          if (sbErr) {
+            console.error('[Profile Avatar Supabase Upsert Error]', sbErr);
+          } else {
+            console.log('[Profile Avatar Supabase Upsert Success]', sbData);
+          }
+
+          // Also update Supabase auth user_metadata
+          try {
+            await window.supabaseClient.auth.updateUser({
+              data: {
+                avatar_url: newAvatar || null,
+                picture: newAvatar || null
+              }
+            });
+          } catch (_) {}
         } catch (sbErr) {
-          console.warn('[Profile] Supabase avatar sync warning:', sbErr);
+          console.error('[Profile Avatar Supabase Upsert Exception]', sbErr);
         }
       }
 
@@ -677,6 +709,7 @@
         ...(profileState.user || {}),
         fullName: profileState.profileData.fullName,
         avatarUrl: newAvatar,
+        avatar_url: newAvatar,
         avatarPublicId: newPublicId || (avatarUploadState.pendingIsRemove ? null : profileState.user?.avatarPublicId)
       };
       profileState.user = updatedUserObj;
@@ -741,15 +774,23 @@
       if (window.supabaseClient && profileState.user && profileState.user.id) {
         const uid = profileState.user.id;
 
-        // Update profiles table
-        await window.supabaseClient
+        // Upsert profiles table
+        const profilePayload = {
+          id: uid,
+          email: profileState.user.email || data.email,
+          full_name: newFullName,
+          avatar_url: newAvatarUrl || null,
+          avatar_public_id: data.avatarPublicId || null,
+          updated_at: new Date().toISOString()
+        };
+        console.log('[Profile Save Supabase Upsert Payload]', profilePayload);
+        const { error: sbErr } = await window.supabaseClient
           .from('profiles')
-          .update({
-            full_name: newFullName,
-            avatar_url: newAvatarUrl || null,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', uid);
+          .upsert(profilePayload);
+
+        if (sbErr) {
+          console.error('[Profile Save Supabase Upsert Error]', sbErr);
+        }
 
         // Update user_settings table
         await window.supabaseClient
@@ -761,6 +802,16 @@
             timezone: newTimezone,
             updated_at: new Date().toISOString()
           });
+
+        // Update auth user metadata
+        try {
+          await window.supabaseClient.auth.updateUser({
+            data: {
+              full_name: newFullName,
+              avatar_url: newAvatarUrl || null
+            }
+          });
+        } catch (_) {}
       }
 
       // 2. Update RiskLoopAuth state & localStorage
@@ -768,6 +819,7 @@
         ...(profileState.user || {}),
         fullName: newFullName,
         avatarUrl: newAvatarUrl,
+        avatar_url: newAvatarUrl,
         phone: newPhone,
         country: newCountry,
         timezone: newTimezone
@@ -807,16 +859,23 @@
     if (!user) return;
     const headerUserName = document.getElementById('headerUserName');
     const headerUserEmail = document.getElementById('headerUserEmail');
+    const menuUserName = document.getElementById('menuUserName');
+    const menuUserEmail = document.getElementById('menuUserEmail');
+    const dashUserGreetingName = document.getElementById('dashUserGreetingName');
     const headerUserAvatar = document.getElementById('headerUserAvatar');
     const menuUserAvatar = document.getElementById('menuUserAvatar');
     const dashUserAvatar = document.getElementById('dashUserAvatar');
     const secUserAvatar = document.getElementById('secUserAvatar');
 
-    if (headerUserName) headerUserName.textContent = user.fullName || user.email || 'Trader';
+    const displayName = user.fullName || user.email?.split('@')[0] || 'Trader';
+    if (headerUserName) headerUserName.textContent = displayName;
     if (headerUserEmail) headerUserEmail.textContent = user.email || '';
+    if (menuUserName) menuUserName.textContent = displayName;
+    if (menuUserEmail) menuUserEmail.textContent = user.email || '';
+    if (dashUserGreetingName) dashUserGreetingName.textContent = displayName;
 
     const hasImg = user.avatarUrl && (user.avatarUrl.trim().startsWith('http') || user.avatarUrl.trim().startsWith('data:image/'));
-    const initials = getInitials(user.fullName || user.email);
+    const initials = getInitials(displayName);
 
     if (headerUserAvatar) {
       if (hasImg) {

@@ -181,12 +181,17 @@ async function saveUserProfileAvatar(userId, email, avatarUrl, avatarPublicId) {
   const now = new Date().toISOString();
 
   // 1. Persist to SQLite
-  db.updateProfileAvatar(userId, avatarUrl, avatarPublicId);
+  try {
+    db.updateProfileAvatar(userId, avatarUrl, avatarPublicId);
+  } catch (dbErr) {
+    console.warn('[Profile Route] SQLite updateProfileAvatar warning:', dbErr.message);
+  }
 
-  // 2. Persist to Supabase
+  // 2. Persist to Supabase profiles table
   if (supportService.supabase) {
     try {
-      await supportService.supabase
+      console.log(`[Profile Route] Upserting avatar to Supabase profiles for user ${userId}:`, avatarUrl);
+      const { data, error } = await supportService.supabase
         .from('profiles')
         .upsert({
           id: userId,
@@ -194,9 +199,16 @@ async function saveUserProfileAvatar(userId, email, avatarUrl, avatarPublicId) {
           avatar_url: avatarUrl || null,
           avatar_public_id: avatarPublicId || null,
           updated_at: now
-        });
+        })
+        .select();
+
+      if (error) {
+        console.error('[Profile Route Error] Supabase profile upsert error:', error);
+      } else {
+        console.log('[Profile Route Success] Supabase profile updated:', data);
+      }
     } catch (sbErr) {
-      console.warn('[Profile Route] Supabase profile upsert warning:', sbErr.message);
+      console.error('[Profile Route Error] Supabase profile upsert exception:', sbErr);
     }
   }
 }
@@ -213,6 +225,8 @@ router.get('/', requireAuth, async (req, res) => {
     const avatarUrl = profile?.avatarUrl || profile?.avatar_url || null;
     const avatarPublicId = profile?.avatarPublicId || profile?.avatar_public_id || null;
     const fullName = profile?.fullName || profile?.full_name || req.user.email?.split('@')[0] || 'Trader';
+
+    console.log(`[Profile Route] GET /api/profile for user ${req.user.id}, avatarUrl: ${avatarUrl}`);
 
     return res.json({
       success: true,
@@ -258,9 +272,11 @@ router.post('/avatar', imageUploadLimiter, requireAuth, singleAvatarUpload, asyn
     const oldPublicId = existingProfile?.avatarPublicId || existingProfile?.avatar_public_id;
 
     // 2. Upload new avatar buffer to Cloudinary
+    console.log(`[Profile Avatar] Uploading avatar image to Cloudinary for user ${userId}...`);
     const uploadResult = await imageUploadService.uploadImage(req.file.buffer, {
       folder: targetFolder
     });
+    console.log(`[Profile Avatar] Cloudinary upload success. secure_url: ${uploadResult.secure_url}, public_id: ${uploadResult.public_id}`);
 
     // 3. If previous avatar existed in Cloudinary, remove old asset
     if (oldPublicId && oldPublicId !== uploadResult.public_id) {

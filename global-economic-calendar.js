@@ -348,9 +348,6 @@
             <span style="font-size: 0.75rem; color: #94a3b8;">| Providers: ${data.overview?.allProvidersHealthy ? '✅ 100% Healthy' : '⚠️ Degradation'}</span>
             <span style="font-size: 0.75rem; color: #94a3b8;">| Circuit Breakers Tripped: ${data.overview?.trippedCircuitBreakersCount || 0}</span>
           </div>
-          <a href="#economic-calendar-admin" style="font-size: 0.75rem; color: #60a5fa; text-decoration: none; font-weight: 600;">
-            Manage Multi-Currency Rollout →
-          </a>
         </div>
       `;
     }

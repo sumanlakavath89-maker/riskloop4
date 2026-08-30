@@ -1,0 +1,109 @@
+# Render.com Web Service Configuration — RiskLoop Backend API
+# Docs: https://render.com/docs/render-yaml-spec
+
+services:
+  - type: web
+    name: riskloop-backend
+    runtime: node
+    region: singapore   # Change to: oregon, frankfurt, ohio, virginia as needed
+    plan: free          # Change to: starter, standard for production
+    buildCommand: npm install
+    startCommand: node src/server.js
+    healthCheckPath: /health
+    autoDeploy: true    # Auto deploy on push to the connected branch
+
+    envVars:
+      # ── Server ──
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+
+      # ── CORS: Replace with your actual Render frontend URL ──
+      - key: ALLOWED_ORIGINS
+        value: https://riskloop-frientend.onrender.com
+
+      # ── Reverse Proxy (Render uses proxies) ──
+      - key: TRUST_PROXY
+        value: "1"
+
+      # ── The following secrets MUST be set manually in Render dashboard ──
+      # Go to: Dashboard → riskloop-backend → Environment
+
+      - key: SESSION_SECRET
+        sync: false   # set manually in Render dashboard
+
+      # Supabase
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+
+      # Cloudinary
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+
+      # OpenAI
+      - key: OPENAI_API_KEY
+        sync: false
+
+      # News APIs
+      - key: NEWSAPI_API_KEY
+        sync: false
+      - key: GNEWS_API_KEY
+        sync: false
+
+      # FMP (Economic Calendar)
+      - key: FMP_API_KEY
+        sync: false
+
+      # Indian Brokers (add as needed)
+      - key: ANGELONE_API_KEY
+        sync: false
+      - key: ANGELONE_CLIENT_ID
+        sync: false
+      - key: ANGELONE_MPIN
+        sync: false
+      - key: ANGELONE_TOTP_SECRET
+        sync: false
+
+      - key: FYERS_APP_ID
+        sync: false
+      - key: FYERS_SECRET_ID
+        sync: false
+      - key: FYERS_REDIRECT_URI
+        sync: false
+
+      - key: DHAN_CLIENT_ID
+        sync: false
+      - key: DHAN_ACCESS_TOKEN
+        sync: false
+
+      - key: UPSTOX_API_KEY
+        sync: false
+      - key: UPSTOX_API_SECRET
+        sync: false
+      - key: UPSTOX_REDIRECT_URI
+        sync: false
+
+      # MT5
+      - key: MT5_GATEWAY_URL
+        sync: false
+      - key: MT5_API_TOKEN
+        sync: false
+      - key: MT5_CALENDAR_BRIDGE_SECRET
+        sync: false
+
+# ─────────────────────────────────────────────────────────────────────────────
+# IMPORTANT: After creating the service in Render, go to:
+#   Dashboard → riskloop-backend → Environment
+# and fill in all values marked `sync: false` above.
+# ─────────────────────────────────────────────────────────────────────────────

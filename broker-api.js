@@ -6,7 +6,7 @@
  * All authentication happens server-side via the backend API.
  */
 
-const BACKEND_URL = 'http://localhost:3000';
+const BACKEND_URL = (typeof window !== 'undefined' && window.API_BASE_URL) || 'http://localhost:3000';
 
 /**
  * Broker API client for frontend-backend communication

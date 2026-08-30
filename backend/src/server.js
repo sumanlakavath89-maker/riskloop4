@@ -46,7 +46,6 @@ import { webSocketService } from './services/WebSocketService.js';
 import { calendarSchedulerService } from './services/CalendarSchedulerService.js';
 import { economicCalendarHealthService } from './services/EconomicCalendarHealthService.js';
 
-const frontendDir = path.resolve(__dirname, '../../');
 
 // ── Database initialisation ───────────────────────────────────────────────────
 // Must happen before any route handler runs so the tables exist.
@@ -253,20 +252,8 @@ app.use('/api/leaderboard', leaderboardRoutes);
 // Development routes (disabled in production)
 app.use('/api/dev', devRoutes);
 
-// Static frontend file serving
-app.use(express.static(frontendDir));
-
-// Authentication callback endpoint (mobile and desktop verification)
-app.get(['/auth/callback', '/auth/callback.html'], (req, res) => {
-  res.sendFile(path.join(frontendDir, 'auth', 'callback.html'));
-});
-
-// Fallback to index.html for root path and auth entry points
-app.get(['/', '/reset-password', '/login', '/register'], (req, res) => {
-  res.sendFile(path.join(frontendDir, 'index.html'));
-});
-
-// 404 handler for API routes
+// ── API-only 404 handlers (frontend is hosted separately as a static site) ──
+// Catch unmatched /api/* routes with a JSON 404
 app.use('/api/*', (req, res) => {
   res.status(404).json({
     success: false,
@@ -274,10 +261,14 @@ app.use('/api/*', (req, res) => {
   });
 });
 
-// Fallback 404 handler
+// Catch-all: any non-API request to the backend returns a helpful JSON message
 app.use((req, res) => {
-  res.status(404).sendFile(path.join(frontendDir, 'index.html'));
+  res.status(404).json({
+    success: false,
+    error: 'This is the RiskLoop API server. The frontend is hosted separately.',
+  });
 });
+
 
 // Centralized Error Handler
 app.use((err, req, res, next) => {

@@ -1,0 +1,49 @@
+# Render.com Static Site Configuration — RiskLoop Frontend
+# Docs: https://render.com/docs/render-yaml-spec
+
+services:
+  - type: web
+    name: riskloop-frontend
+    runtime: static
+    # No build step needed — pure HTML/CSS/JS
+    buildCommand: echo "No build step"
+    staticPublishPath: .
+    pullRequestPreviewsEnabled: false
+    headers:
+      # Security headers for all pages
+      - path: /*
+        name: X-Frame-Options
+        value: SAMEORIGIN
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
+      - path: /*
+        name: Permissions-Policy
+        value: "camera=(), microphone=(), geolocation=()"
+    routes:
+      # SPA-style routing: unknown paths fall back to index.html
+      - type: rewrite
+        source: /auth/callback
+        destination: /auth/callback.html
+      - type: rewrite
+        source: /login
+        destination: /login.html
+      - type: rewrite
+        source: /register
+        destination: /register.html
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+# ─────────────────────────────────────────────────────────────────────────────
+# AFTER DEPLOYMENT — set this environment variable in Render dashboard:
+#
+#   Key:   API_BASE_URL
+#   Value: https://riskloop-backend.onrender.com  (your backend Render URL)
+#
+# Then update index.html's <meta name="api-base-url" content="..."> with that URL,
+# or configure it via Render's build environment substitution.
+# ─────────────────────────────────────────────────────────────────────────────
